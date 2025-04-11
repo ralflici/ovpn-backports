@@ -1,0 +1,58 @@
+# This GitHub Actions workflow is designed to automate the process of updating
+# OVPN sources in the "sources" branch whenever there are changes pushed to the
+# "main" branch. Files under drivers/net/ovpn and include/uapi/linux/ovpn.h are
+# forced to be added to the commit so that they can be included in the generated
+# tarball.
+
+name: Update Sources
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  update-sources:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      # Generate the latest sources
+      - name: Generate ovpn Sources
+        run: |
+          chmod +x ./backports-ctl.sh
+          ./backports-ctl.sh get-ovpn
+
+      - name: Configure Git
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+
+      # Push the new sources to the "sources" branch
+      - name: Push to sources Branch
+        run: |
+          git fetch origin sources || true
+          git checkout -B sources origin/sources || git checkout -B sources
+
+          # Force-add the required files
+          git add -f drivers/net/ovpn include/uapi/linux/ovpn.h
+          git add .
+
+          # Generate a tag version string using the current date
+          VERSION=$(date +%Y%m%d)
+
+          if ! git diff-index --quiet HEAD; then
+            git commit -m "update sources v$VERSION"
+            git push origin sources
+          else
+            echo "No changes detected; nothing to commit on 'sources'."
+          fi
+
+          git tag -f "v$VERSION"
+          git push origin --tags --force
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
