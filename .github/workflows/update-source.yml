@@ -36,7 +36,7 @@ jobs:
       - name: Push to sources Branch
         run: |
           git fetch origin sources || true
-          git reset origin/sources
+          git reset origin/sources || git checkout -b sources
 
           # Force-add the required files
           git add -f drivers/net/ovpn include/uapi/linux/ovpn.h
