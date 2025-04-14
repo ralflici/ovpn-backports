@@ -36,7 +36,7 @@ jobs:
       - name: Push to sources Branch
         run: |
           git fetch origin sources || true
-          git checkout -B sources origin/sources || git checkout -B sources
+          git reset origin/sources
 
           # Force-add the required files
           git add -f drivers/net/ovpn include/uapi/linux/ovpn.h
@@ -47,7 +47,7 @@ jobs:
 
           if ! git diff-index --quiet HEAD; then
             git commit -m "update sources v$VERSION"
-            git push origin sources
+            git push origin HEAD:sources
           else
             echo "No changes detected; nothing to commit on 'sources'."
           fi

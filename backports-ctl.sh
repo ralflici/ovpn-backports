@@ -92,6 +92,7 @@ get_ovpn() {
 	fi
 
 	echo "Extracting ovpn source files"
+	rm -fr $PWD/drivers/ $PWD/include/
 	mkdir -p $PWD/drivers/net $PWD/include/uapi/linux
 	cp -r $PWD/net-next/drivers/net/ovpn $PWD/drivers/net/
 	cp $PWD/net-next/include/uapi/linux/ovpn.h $PWD/include/uapi/linux/ovpn.h
