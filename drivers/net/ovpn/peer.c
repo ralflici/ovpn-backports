@@ -1369,7 +1369,12 @@ void ovpn_peer_keepalive_work(struct work_struct *work)
 	}
 
 	/* prevent rearming if the interface is being destroyed */
-	if (next_run > 0 && ovpn->registered) {
+	if (next_run > 0 &&
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 9, 0)
+	    READ_ONCE(ovpn->dev->reg_state) == NETREG_REGISTERED) {
+#else
+	    ovpn->dev->reg_state == NETREG_REGISTERED) {
+#endif
 		netdev_dbg(ovpn->dev,
 			   "scheduling keepalive work: now=%llu next_run=%llu delta=%llu\n",
 			   next_run, now, next_run - now);

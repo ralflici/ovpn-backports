@@ -128,7 +128,11 @@ static int ovpn_udp_encap_recv(struct sock *sk, struct sk_buff *skb)
 	return 0;
 
 drop:
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 14, 0)
+	dev_dstats_rx_dropped(ovpn->dev);
+#else
 	dev_core_stats_rx_dropped_inc(ovpn->dev);
+#endif
 drop_noovpn:
 	kfree_skb(skb);
 	return 0;

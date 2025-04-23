@@ -131,7 +131,11 @@ static void ovpn_tcp_rcv(struct strparser *strp, struct sk_buff *skb)
 	ovpn_recv(peer, skb);
 	return;
 err:
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 14, 0)
+	dev_dstats_rx_dropped(peer->ovpn->dev);
+#else
 	dev_core_stats_rx_dropped_inc(peer->ovpn->dev);
+#endif
 	kfree_skb(skb);
 	ovpn_peer_del(peer, OVPN_DEL_PEER_REASON_TRANSPORT_ERROR);
 }
@@ -281,7 +285,11 @@ static void ovpn_tcp_send_sock(struct ovpn_peer *peer, struct sock *sk)
 
 	if (!peer->tcp.out_msg.len) {
 		preempt_disable();
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 14, 0)
+		dev_dstats_tx_add(peer->ovpn->dev, skb->len);
+#else
 		dev_sw_netstats_tx_add(peer->ovpn->dev, 1, skb->len);
+#endif
 		preempt_enable();
 	}
 
@@ -313,7 +321,11 @@ static void ovpn_tcp_send_sock_skb(struct ovpn_peer *peer, struct sock *sk,
 		ovpn_tcp_send_sock(peer, sk);
 
 	if (peer->tcp.out_msg.skb) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 14, 0)
+		dev_dstats_tx_dropped(peer->ovpn->dev);
+#else
 		dev_core_stats_tx_dropped_inc(peer->ovpn->dev);
+#endif
 		kfree_skb(skb);
 		return;
 	}
@@ -339,7 +351,11 @@ void ovpn_tcp_send_skb(struct ovpn_peer *peer, struct socket *sock,
 #else
 		    netdev_max_backlog) {
 #endif
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 14, 0)
+			dev_dstats_tx_dropped(peer->ovpn->dev);
+#else
 			dev_core_stats_tx_dropped_inc(peer->ovpn->dev);
+#endif
 			kfree_skb(skb);
 			goto unlock;
 		}

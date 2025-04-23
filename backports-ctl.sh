@@ -45,10 +45,6 @@ clean_kernel_repo() {
 get_kernel() {
 	version="$1"
 	config_file="$2"
-	if [ -z "$version" ]; then
-		echo "Usage: $0 get-kernel <version>"
-		exit 1
-	fi
 
 	if less_then_version $version $MIN_KERNEL_VERSION; then
 		echo "Minimum supported version is $MIN_KERNEL_VERSION"
