@@ -118,6 +118,8 @@ enum {
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 11, 0) && \
 	RHEL_RELEASE_CODE < RHEL_RELEASE_VERSION(8, 0)
 
+#include <net/ip_tunnels.h>
+
 #define dev_get_tstats64 ip_tunnel_get_stats64
 
 #include <linux/netdevice.h>

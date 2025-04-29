@@ -660,7 +660,7 @@ index bea0391..482cd60 100644
  {
  	int ret = genl_register_family(&ovpn_nl_family);
 diff --git a/drivers/net/ovpn/main.c b/drivers/net/ovpn/main.c
-index 0acb093..dfe0196 100644
+index 0acb093..87738fa 100644
 --- a/drivers/net/ovpn/main.c
 +++ b/drivers/net/ovpn/main.c
 @@ -85,6 +85,12 @@ static int ovpn_net_init(struct net_device *dev)
@@ -676,7 +676,7 @@ index 0acb093..dfe0196 100644
  	return 0;
  }
  
-@@ -93,6 +99,9 @@ static void ovpn_net_uninit(struct net_device *dev)
+@@ -93,22 +99,30 @@ static void ovpn_net_uninit(struct net_device *dev)
  	struct ovpn_priv *ovpn = netdev_priv(dev);
  
  	gro_cells_destroy(&ovpn->gro_cells);
@@ -686,7 +686,15 @@ index 0acb093..dfe0196 100644
  }
  
  static const struct net_device_ops ovpn_netdev_ops = {
-@@ -105,10 +114,12 @@ static const struct device_type ovpn_type = {
+ 	.ndo_init		= ovpn_net_init,
+ 	.ndo_uninit		= ovpn_net_uninit,
+ 	.ndo_start_xmit		= ovpn_net_xmit,
++#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 9, 0)
++	.ndo_get_stats64	= dev_get_tstats64,
++#endif
+ };
+ 
+ static const struct device_type ovpn_type = {
  	.name = OVPN_FAMILY_NAME,
  };
  
@@ -699,7 +707,7 @@ index 0acb093..dfe0196 100644
  
  /**
   * ovpn_dev_is_valid - check if the netdevice is of type 'ovpn'
-@@ -141,7 +152,11 @@ static void ovpn_setup(struct net_device *dev)
+@@ -141,7 +155,11 @@ static void ovpn_setup(struct net_device *dev)
  
  	dev->needs_free_netdev = true;
  
@@ -711,7 +719,7 @@ index 0acb093..dfe0196 100644
  
  	dev->ethtool_ops = &ovpn_ethtool_ops;
  	dev->netdev_ops = &ovpn_netdev_ops;
-@@ -169,6 +184,7 @@ static void ovpn_setup(struct net_device *dev)
+@@ -169,6 +187,7 @@ static void ovpn_setup(struct net_device *dev)
  	SET_NETDEV_DEVTYPE(dev, &ovpn_type);
  }
  
@@ -719,7 +727,7 @@ index 0acb093..dfe0196 100644
  static int ovpn_newlink(struct net_device *dev,
  			struct rtnl_newlink_params *params,
  			struct netlink_ext_ack *extack)
-@@ -202,6 +218,40 @@ static int ovpn_newlink(struct net_device *dev,
+@@ -202,6 +221,40 @@ static int ovpn_newlink(struct net_device *dev,
  
  	return register_netdevice(dev);
  }
@@ -760,7 +768,7 @@ index 0acb093..dfe0196 100644
  
  static void ovpn_dellink(struct net_device *dev, struct list_head *head)
  {
-@@ -224,10 +274,14 @@ static int ovpn_fill_info(struct sk_buff *skb, const struct net_device *dev)
+@@ -224,10 +277,14 @@ static int ovpn_fill_info(struct sk_buff *skb, const struct net_device *dev)
  
  static struct rtnl_link_ops ovpn_link_ops = {
  	.kind = "ovpn",
