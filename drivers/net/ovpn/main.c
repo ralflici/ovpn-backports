@@ -108,6 +108,9 @@ static const struct net_device_ops ovpn_netdev_ops = {
 	.ndo_init		= ovpn_net_init,
 	.ndo_uninit		= ovpn_net_uninit,
 	.ndo_start_xmit		= ovpn_net_xmit,
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 9, 0)
+	.ndo_get_stats64	= dev_get_tstats64,
+#endif
 };
 
 static const struct device_type ovpn_type = {

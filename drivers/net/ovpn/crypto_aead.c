@@ -36,6 +36,13 @@ static int ovpn_aead_encap_overhead(const struct ovpn_crypto_key_slot *ks)
 		crypto_aead_authsize(ks->encrypt);	/* Auth Tag */
 }
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 3, 0)
+static inline void ovpn_encrypt_post_compl(struct crypto_async_request *req, int ret)
+{
+	ovpn_decrypt_post(req->data, ret);
+}
+#endif
+
 int ovpn_aead_encrypt(struct ovpn_peer *peer, struct ovpn_crypto_key_slot *ks,
 		      struct sk_buff *skb)
 {
@@ -135,7 +142,11 @@ int ovpn_aead_encrypt(struct ovpn_peer *peer, struct ovpn_crypto_key_slot *ks,
 
 	/* setup async crypto operation */
 	aead_request_set_tfm(req, ks->encrypt);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 3, 0)
+	aead_request_set_callback(req, 0, ovpn_encrypt_post_compl, skb);
+#else
 	aead_request_set_callback(req, 0, ovpn_encrypt_post, skb);
+#endif
 	aead_request_set_crypt(req, sg, sg,
 			       skb->len - ovpn_aead_encap_overhead(ks), iv);
 	aead_request_set_ad(req, OVPN_AAD_SIZE);
@@ -143,6 +154,13 @@ int ovpn_aead_encrypt(struct ovpn_peer *peer, struct ovpn_crypto_key_slot *ks,
 	/* encrypt it */
 	return crypto_aead_encrypt(req);
 }
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 3, 0)
+static inline void ovpn_decrypt_post_compl(struct crypto_async_request *req, int ret)
+{
+	ovpn_decrypt_post(req->data, ret);
+}
+#endif
 
 int ovpn_aead_decrypt(struct ovpn_peer *peer, struct ovpn_crypto_key_slot *ks,
 		      struct sk_buff *skb)
@@ -227,7 +245,11 @@ int ovpn_aead_decrypt(struct ovpn_peer *peer, struct ovpn_crypto_key_slot *ks,
 
 	/* setup async crypto operation */
 	aead_request_set_tfm(req, ks->decrypt);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 3, 0)
+	aead_request_set_callback(req, 0, ovpn_decrypt_post_compl, skb);
+#else
 	aead_request_set_callback(req, 0, ovpn_decrypt_post, skb);
+#endif
 	aead_request_set_crypt(req, sg, sg, payload_len + tag_size, iv);
 
 	aead_request_set_ad(req, OVPN_AAD_SIZE);

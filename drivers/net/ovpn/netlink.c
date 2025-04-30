@@ -87,7 +87,7 @@ int ovpn_nl_pre_doit(const struct genl_split_ops *ops, struct sk_buff *skb,
 	return 0;
 }
 
-#if LINUX_VERSION_CODE <= KERNEL_VERSION(6, 5, 0) && RHEL_RELEASE_CODE <= RHEL_RELEASE_VERSION(9, 4)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 6, 0) && RHEL_RELEASE_CODE <= RHEL_RELEASE_VERSION(9, 4)
 static struct ovpn_priv *
 ovpn_get_dev_from_attrs_cb(struct net *net, struct netlink_callback *cb,
 			netdevice_tracker *tracker)
@@ -714,7 +714,7 @@ err:
 	return ret;
 }
 
-#if LINUX_VERSION_CODE <= KERNEL_VERSION(6, 5, 0) && RHEL_RELEASE_CODE <= RHEL_RELEASE_VERSION(9, 4)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 6, 0) && RHEL_RELEASE_CODE <= RHEL_RELEASE_VERSION(9, 4)
 static int ovpn_nl_send_peer_net(struct sk_buff *skb, struct net *net,
 			     const struct ovpn_peer *peer, u32 portid, u32 seq,
 			     int flags)

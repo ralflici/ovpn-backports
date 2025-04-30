@@ -19,7 +19,7 @@ static const struct netlink_range_validation ovpn_a_keyconf_peer_id_range = {
 	.max	= 16777215ULL,
 };
 
-#if LINUX_VERSION_CODE <= KERNEL_VERSION(5, 7, 0) && RHEL_RELEASE_CODE == 0
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 8, 0) && RHEL_RELEASE_CODE == 0
 static int ovpn_nla_validate_range(const struct nlattr *attr,
 				   struct netlink_ext_ack *extack)
 {
@@ -148,7 +148,7 @@ static const struct genl_split_ops ovpn_nl_ops[] = {
 		.post_doit	= ovpn_nl_post_doit,
 #endif
 		.doit		= ovpn_nl_peer_new_doit,
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0) || LINUX_VERSION_CODE <= KERNEL_VERSION(5, 1, 0) || RHEL_RELEASE_CODE != 0
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0) || LINUX_VERSION_CODE < KERNEL_VERSION(5, 2, 0) || RHEL_RELEASE_CODE != 0
 		.policy		= ovpn_peer_new_nl_policy,
 		.maxattr	= OVPN_A_PEER,
 #endif
@@ -161,7 +161,7 @@ static const struct genl_split_ops ovpn_nl_ops[] = {
 		.post_doit	= ovpn_nl_post_doit,
 #endif
 		.doit		= ovpn_nl_peer_set_doit,
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0) || LINUX_VERSION_CODE <= KERNEL_VERSION(5, 1, 0) || RHEL_RELEASE_CODE != 0
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0) || LINUX_VERSION_CODE < KERNEL_VERSION(5, 2, 0) || RHEL_RELEASE_CODE != 0
 		.policy		= ovpn_peer_set_nl_policy,
 		.maxattr	= OVPN_A_PEER,
 #endif
@@ -189,7 +189,7 @@ static const struct genl_split_ops ovpn_nl_ops[] = {
 		.cmd		= OVPN_CMD_PEER_GET,
 		.doit		= ovpn_nl_peer_get_doit,
 		.dumpit		= ovpn_nl_peer_get_dumpit,
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0) || LINUX_VERSION_CODE <= KERNEL_VERSION(5, 1, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0) || LINUX_VERSION_CODE < KERNEL_VERSION(5, 2, 0)
 		.policy		= ovpn_peer_get_do_nl_policy,
 		.maxattr	= OVPN_A_PEER,
 #endif
@@ -203,7 +203,7 @@ static const struct genl_split_ops ovpn_nl_ops[] = {
 		.post_doit	= ovpn_nl_post_doit,
 #endif
 		.doit		= ovpn_nl_peer_del_doit,
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0) || LINUX_VERSION_CODE <= KERNEL_VERSION(5, 1, 0) || RHEL_RELEASE_CODE != 0
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0) || LINUX_VERSION_CODE < KERNEL_VERSION(5, 2, 0) || RHEL_RELEASE_CODE != 0
 		.policy		= ovpn_peer_del_nl_policy,
 		.maxattr	= OVPN_A_PEER,
 #endif
@@ -216,7 +216,7 @@ static const struct genl_split_ops ovpn_nl_ops[] = {
 		.post_doit	= ovpn_nl_post_doit,
 #endif
 		.doit		= ovpn_nl_key_new_doit,
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0) || LINUX_VERSION_CODE <= KERNEL_VERSION(5, 1, 0) || RHEL_RELEASE_CODE != 0
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0) || LINUX_VERSION_CODE < KERNEL_VERSION(5, 2, 0) || RHEL_RELEASE_CODE != 0
 		.policy		= ovpn_key_new_nl_policy,
 		.maxattr	= OVPN_A_KEYCONF,
 #endif
@@ -229,7 +229,7 @@ static const struct genl_split_ops ovpn_nl_ops[] = {
 		.post_doit	= ovpn_nl_post_doit,
 #endif
 		.doit		= ovpn_nl_key_get_doit,
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0) || LINUX_VERSION_CODE <= KERNEL_VERSION(5, 1, 0) || RHEL_RELEASE_CODE != 0
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0) || LINUX_VERSION_CODE < KERNEL_VERSION(5, 2, 0) || RHEL_RELEASE_CODE != 0
 		.policy		= ovpn_key_get_nl_policy,
 		.maxattr	= OVPN_A_KEYCONF,
 #endif
@@ -242,7 +242,7 @@ static const struct genl_split_ops ovpn_nl_ops[] = {
 		.post_doit	= ovpn_nl_post_doit,
 #endif
 		.doit		= ovpn_nl_key_swap_doit,
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0) || LINUX_VERSION_CODE <= KERNEL_VERSION(5, 1, 0) || RHEL_RELEASE_CODE != 0
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0) || LINUX_VERSION_CODE < KERNEL_VERSION(5, 2, 0) || RHEL_RELEASE_CODE != 0
 		.policy		= ovpn_key_swap_nl_policy,
 		.maxattr	= OVPN_A_KEYCONF,
 #endif
@@ -255,7 +255,7 @@ static const struct genl_split_ops ovpn_nl_ops[] = {
 		.post_doit	= ovpn_nl_post_doit,
 #endif
 		.doit		= ovpn_nl_key_del_doit,
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0) || LINUX_VERSION_CODE <= KERNEL_VERSION(5, 1, 0) || RHEL_RELEASE_CODE != 0
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0) || LINUX_VERSION_CODE < KERNEL_VERSION(5, 2, 0) || RHEL_RELEASE_CODE != 0
 		.policy		= ovpn_key_del_nl_policy,
 		.maxattr	= OVPN_A_KEYCONF,
 #endif
