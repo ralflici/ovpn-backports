@@ -6,7 +6,7 @@ MIN_KERNEL_VERSION='4.18.0'
 OVPN_CONFIG_FILE='ovpn.cfg'
 KERNEL_REPO_URL='git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git'
 # NET_NEXT_REPO_URL='git://git.kernel.org/pub/scm/linux/kernel/git/netdev/net-next.git'
-NET_NEXT_REPO_URL='https://github.com/mandelbitdev/ovpn-net-next.git'
+NET_NEXT_REPO_URL='https://github.com/OpenVPN/ovpn-net-next.git'
 DEFAULT_KERNEL_ROOT="/usr/lib/modules/$(uname -r)/build"
 DEFAULT_CONFIG_FILE="$DEFAULT_KERNEL_ROOT/.config"
 
@@ -75,17 +75,19 @@ get_kernel() {
 get_ovpn() {
 	keep=$1
 	if [ -d $PWD/net-next ]; then
-		echo "net-next directory already exists"
-		exit 1
+		echo "net-next directory already exists, updating it"
+		git -C $PWD/net-next fetch --depth 1 origin main
+		git -C $PWD/net-next reset --hard origin/main
+	else
+		echo "Cloning net-next repository"
+		latest_tag=$(git ls-remote --tags $NET_NEXT_REPO_URL | awk -F/ '{print $3}' | sort -V | tail -n1 | sed 's/\^.*//')
+		if [ -z "$latest_tag" ]; then # our fork of net-next doesn't have tags
+			git clone --depth 1 $NET_NEXT_REPO_URL $PWD/net-next
+		else
+			git clone --depth 1 --branch $latest_tag $NET_NEXT_REPO_URL $PWD/net-next
+		fi
 	fi
 
-	echo "Cloning net-next repository"
-	latest_tag=$(git ls-remote --tags $NET_NEXT_REPO_URL | awk -F/ '{print $3}' | sort -V | tail -n1 | sed 's/\^.*//')
-	if [ -z "$latest_tag" ]; then # our fork of net-next doesn't have tags
-		git clone --depth 1 --single-branch $NET_NEXT_REPO_URL $PWD/net-next
-	else
-		git clone --depth 1 --branch $latest_tag --single-branch $NET_NEXT_REPO_URL $PWD/net-next
-	fi
 
 	echo "Extracting ovpn source files"
 	rm -fr $PWD/drivers/ $PWD/include/
