@@ -9,6 +9,9 @@
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 20, 0) && RHEL_RELEASE_CODE == 0
 #include <linux/file.h>
 #endif
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 5, 0) && RHEL_RELEASE_CODE == 0
+#include <uapi/linux/netfilter/nfnetlink.h>
+#endif
 #include <linux/netdevice.h>
 #include <linux/types.h>
 #include <net/genetlink.h>
@@ -95,13 +98,13 @@ ovpn_get_dev_from_attrs_cb(struct net *net, struct netlink_callback *cb,
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 5, 0) && RHEL_RELEASE_CODE == 0
 	extern const struct nla_policy
 		ovpn_peer_get_dump_nl_policy[OVPN_A_IFINDEX + 1];
+	int min_len = nlmsg_total_size(sizeof(struct nfgenmsg));
+	struct nlmsghdr *nlh = nlmsg_hdr(cb->skb);
 	struct nlattr *attrs[OVPN_A_IFINDEX + 1];
-	int err;
+	void *payload = (void *)nlh + min_len;
+	int payload_len = nlh->nlmsg_len - min_len;
 
-	void *payload = nlmsg_data(cb->nlh);
-	int payload_len = nlmsg_len(cb->nlh);
-
-	err = nla_parse(attrs, OVPN_A_IFINDEX, payload, payload_len,
+	int err = nla_parse(attrs, OVPN_A_IFINDEX, payload, payload_len,
 			ovpn_peer_get_dump_nl_policy, NULL);
 	if (err)
 		return ERR_PTR(err);
