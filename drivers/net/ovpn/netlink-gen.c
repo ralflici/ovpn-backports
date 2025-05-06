@@ -11,11 +11,19 @@
 #include <uapi/linux/ovpn.h>
 
 /* Integer value ranges */
-static const struct netlink_range_validation ovpn_a_peer_id_range = {
+static
+# if RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(9, 4)
+const
+# endif
+struct netlink_range_validation ovpn_a_peer_id_range = {
 	.max	= 16777215ULL,
 };
 
-static const struct netlink_range_validation ovpn_a_keyconf_peer_id_range = {
+static
+# if RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(9, 4)
+const
+# endif
+struct netlink_range_validation ovpn_a_keyconf_peer_id_range = {
 	.max	= 16777215ULL,
 };
 

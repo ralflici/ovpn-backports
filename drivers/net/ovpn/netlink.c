@@ -46,7 +46,11 @@ ovpn_get_dev_from_attrs(struct net *net, const struct genl_info *info,
 	struct net_device *dev;
 	int ifindex;
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 9, 0)
+	if (GENL_REQ_ATTR_CHECK((struct genl_info *)info, OVPN_A_IFINDEX))
+#else
 	if (GENL_REQ_ATTR_CHECK(info, OVPN_A_IFINDEX))
+#endif
 		return ERR_PTR(-EINVAL);
 
 	ifindex = nla_get_u32(info->attrs[OVPN_A_IFINDEX]);
@@ -95,6 +99,10 @@ static struct ovpn_priv *
 ovpn_get_dev_from_attrs_cb(struct net *net, struct netlink_callback *cb,
 			netdevice_tracker *tracker)
 {
+	struct ovpn_priv *ovpn;
+	struct net_device *dev;
+	int ifindex;
+
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 5, 0) && RHEL_RELEASE_CODE == 0
 	extern const struct nla_policy
 		ovpn_peer_get_dump_nl_policy[OVPN_A_IFINDEX + 1];
@@ -111,9 +119,6 @@ ovpn_get_dev_from_attrs_cb(struct net *net, struct netlink_callback *cb,
 #else
 	struct nlattr **attrs = genl_dumpit_info(cb)->attrs;
 #endif
-	struct ovpn_priv *ovpn;
-	struct net_device *dev;
-	int ifindex;
 
 	if (!attrs[OVPN_A_IFINDEX])
 		return ERR_PTR(-EINVAL);

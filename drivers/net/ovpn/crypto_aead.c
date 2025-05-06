@@ -39,7 +39,7 @@ static int ovpn_aead_encap_overhead(const struct ovpn_crypto_key_slot *ks)
 #if LINUX_VERSION_CODE < KERNEL_VERSION(6, 3, 0)
 static inline void ovpn_encrypt_post_compl(struct crypto_async_request *req, int ret)
 {
-	ovpn_decrypt_post(req->data, ret);
+	ovpn_encrypt_post(req->data, ret);
 }
 #endif
 
