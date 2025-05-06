@@ -2,7 +2,13 @@
 
 The ovpn kernel module is part of the Linux kernel starting from version 6.15. It enhances OpenVPN performance by offloading data channel management to the kernel. This repository contains out-of-tree backports for the ovpn kernel module, enabling its use with older kernel versions.
 
-## Preparing the build environment
+## Installation
+
+### Pre-patched sources
+
+A pre-patched version of the source files is available for download in the [tags](https://github.com/OpenVPN/ovpn-backports/tags) section of this repository. After downloading, you can simply run `make && make install` to build and install the module.
+
+### Preparing the build environment
 
 To build the module, you need the kernel headers (or sources) and the ovpn source files. You can either compile the module against your currently running kernel (by ensuring the headers are installed) or against a different kernel version by providing the appropriate path to the kernel sources.
 
@@ -12,7 +18,7 @@ A utility script (`backports-ctl.sh`) is provided to assist with these steps. It
 ./backports-ctl.sh get-ovpn
 ```
 
-This command downloads the latest `net-next` kernel repository, extracts the ovpn files from it, and patches them. If you prefer to use a different ovpn version (not recommended), you can manually provide the `include/uapi/linux/ovpn.h` header and the `drivers/net/ovpn/` directory. Keep in mind that you might need to adjust the sources to ensure compatibility with your target kernel version.
+Be aware that this command temporarily downloads a full kernel tree (the latest `net-next` kernel repository), extracts the ovpn files from it, and applies patches. If you want the `net-next` repository to persist, run the command with the `--keep` (or `-k`) option. This option keeps the repository in the `net-next` directory as a shallow copy, and subsequent runs will simply update it.
 
 If you want to compile the module for a kernel version other than your currently running kernel, you can download its sources with:
 
@@ -30,7 +36,7 @@ Finally you can restore the repository to its original state with:
 ./backports-ctl.sh clean
 ```
 
-## Building and installing
+### Building and installing
 
 Once the sources are ready, you can build the module with:
 
@@ -48,12 +54,13 @@ make install
 
 > **_NOTE:_** If Secure Boot is enabled, you need to sign the module before loading it. Check [this](https://askubuntu.com/questions/760671/could-not-load-vboxdrv-after-upgrade-to-ubuntu-16-04-and-i-want-to-keep-secur/768310#768310) tutorial on how to sign a custom kernel module.
 
-## Supported distros
+## Testing
 
-Tested on:
+The module should successfully load and run kernel selftests on the following distributions:
  - Ubuntu 20.04
  - Ubuntu 22.04
  - Debian 12.10
+ - Debian 11.6
  - RHEL 10.0
  - RHEL 9.0 - 9.5
  - RHEL 8.10
