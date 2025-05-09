@@ -143,7 +143,7 @@ index 10d8afe..b321033 100644
  	kfree_skb_list(skb);
  	return NETDEV_TX_OK;
 diff --git a/drivers/net/ovpn/main.c b/drivers/net/ovpn/main.c
-index dcc094b..a57f50f 100644
+index dcc094b..9773217 100644
 --- a/drivers/net/ovpn/main.c
 +++ b/drivers/net/ovpn/main.c
 @@ -85,6 +85,12 @@ static int ovpn_net_init(struct net_device *dev)
@@ -181,7 +181,7 @@ index dcc094b..a57f50f 100644
  	.name = OVPN_FAMILY_NAME,
  };
  
-+#if LINUX_VERSION_CODE > KERNEL_VERSION(4, 19, 0) || RHEL_RELEASE_CODE != 0
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 20, 0) || RHEL_RELEASE_CODE != 0
  static const struct nla_policy ovpn_policy[IFLA_OVPN_MAX + 1] = {
  	[IFLA_OVPN_MODE] = NLA_POLICY_RANGE(NLA_U8, OVPN_MODE_P2P,
  					    OVPN_MODE_MP),
@@ -260,14 +260,14 @@ index dcc094b..a57f50f 100644
 +#endif
  	.priv_size = sizeof(struct ovpn_priv),
  	.setup = ovpn_setup,
-+#if LINUX_VERSION_CODE > KERNEL_VERSION(4, 19, 0) || RHEL_RELEASE_CODE != 0
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 20, 0) || RHEL_RELEASE_CODE != 0
  	.policy = ovpn_policy,
 +#endif
  	.maxtype = IFLA_OVPN_MAX,
  	.newlink = ovpn_newlink,
  	.dellink = ovpn_dellink,
 diff --git a/drivers/net/ovpn/netlink.c b/drivers/net/ovpn/netlink.c
-index bea0391..ee537e4 100644
+index bea0391..146d34d 100644
 --- a/drivers/net/ovpn/netlink.c
 +++ b/drivers/net/ovpn/netlink.c
 @@ -6,6 +6,12 @@
@@ -496,7 +496,7 @@ index bea0391..ee537e4 100644
  
  int ovpn_nl_peer_get_dumpit(struct sk_buff *skb, struct netlink_callback *cb)
  {
-+#if LINUX_VERSION_CODE > KERNEL_VERSION(6, 5, 0) || RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(9, 5)
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0) || RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(9, 5)
  	const struct genl_info *info = genl_info_dump(cb);
 +#else
 +	struct net *net = sock_net(skb->sk);
@@ -506,7 +506,7 @@ index bea0391..ee537e4 100644
  	struct ovpn_priv *ovpn;
  	struct ovpn_peer *peer;
  
-+#if LINUX_VERSION_CODE > KERNEL_VERSION(6, 5, 0) || RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(9, 5)
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0) || RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(9, 5)
  	ovpn = ovpn_get_dev_from_attrs(sock_net(cb->skb->sk), info, &tracker);
 +#else
 +	ovpn = ovpn_get_dev_from_attrs_cb(sock_net(cb->skb->sk), cb, &tracker);
@@ -518,7 +518,7 @@ index bea0391..ee537e4 100644
  		rcu_read_lock();
  		peer = rcu_dereference(ovpn->peer);
  		if (peer) {
-+#if LINUX_VERSION_CODE > KERNEL_VERSION(6, 5, 0) || RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(9, 5)
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0) || RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(9, 5)
  			if (ovpn_nl_send_peer(skb, info, peer,
  					      NETLINK_CB(cb->skb).portid,
  					      cb->nlh->nlmsg_seq,
@@ -536,7 +536,7 @@ index bea0391..ee537e4 100644
  				continue;
  			}
  
-+#if LINUX_VERSION_CODE > KERNEL_VERSION(6, 5, 0) || RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(9, 5)
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0) || RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(9, 5)
  			if (ovpn_nl_send_peer(skb, info, peer,
  					      NETLINK_CB(cb->skb).portid,
  					      cb->nlh->nlmsg_seq,
@@ -559,7 +559,7 @@ index bea0391..ee537e4 100644
  {
  	int ret = genl_register_family(&ovpn_nl_family);
 diff --git a/drivers/net/ovpn/netlink-gen.c b/drivers/net/ovpn/netlink-gen.c
-index 58e1a43..f90f9c2 100644
+index 58e1a43..c075c63 100644
 --- a/drivers/net/ovpn/netlink-gen.c
 +++ b/drivers/net/ovpn/netlink-gen.c
 @@ -11,17 +11,48 @@
@@ -567,7 +567,7 @@ index 58e1a43..f90f9c2 100644
  
  /* Integer value ranges */
 -static const struct netlink_range_validation ovpn_a_peer_id_range = {
-+#if LINUX_VERSION_CODE > KERNEL_VERSION(5, 7, 0)
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0)
 +static
 +#if RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(9, 4)
 +const
@@ -578,7 +578,7 @@ index 58e1a43..f90f9c2 100644
 +#endif
  
 -static const struct netlink_range_validation ovpn_a_keyconf_peer_id_range = {
-+#if LINUX_VERSION_CODE > KERNEL_VERSION(5, 7, 0)
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0)
 +static
 +#if RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(9, 4)
 +const
@@ -605,7 +605,7 @@ index 58e1a43..f90f9c2 100644
  
  /* Common nested types */
  const struct nla_policy ovpn_keyconf_nl_policy[OVPN_A_KEYCONF_DECRYPT_DIR + 1] = {
-+#if LINUX_VERSION_CODE > KERNEL_VERSION(5, 7, 0) || RHEL_RELEASE_CODE != 0
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0) || RHEL_RELEASE_CODE != 0
  	[OVPN_A_KEYCONF_PEER_ID] = NLA_POLICY_FULL_RANGE(NLA_U32, &ovpn_a_keyconf_peer_id_range),
 +#else
 +	[OVPN_A_KEYCONF_PEER_ID] = NLA_POLICY_VALIDATE_FN(NLA_U32, ovpn_nla_validate_range),
@@ -617,7 +617,7 @@ index 58e1a43..f90f9c2 100644
  };
  
  const struct nla_policy ovpn_peer_nl_policy[OVPN_A_PEER_LINK_TX_PACKETS + 1] = {
-+#if LINUX_VERSION_CODE > KERNEL_VERSION(5, 7, 0) || RHEL_RELEASE_CODE != 0
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0) || RHEL_RELEASE_CODE != 0
  	[OVPN_A_PEER_ID] = NLA_POLICY_FULL_RANGE(NLA_U32, &ovpn_a_peer_id_range),
 +#else
 +	[OVPN_A_PEER_ID] = NLA_POLICY_VALIDATE_FN(NLA_U32, ovpn_nla_validate_range),
@@ -630,7 +630,7 @@ index 58e1a43..f90f9c2 100644
  
  /* OVPN_CMD_PEER_GET - dump */
 -static const struct nla_policy ovpn_peer_get_dump_nl_policy[OVPN_A_IFINDEX + 1] = {
-+#if LINUX_VERSION_CODE > KERNEL_VERSION(5, 5, 0) || RHEL_RELEASE_CODE != 0
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 5, 0) || RHEL_RELEASE_CODE != 0
 +static
 +#endif
 +const struct nla_policy ovpn_peer_get_dump_nl_policy[OVPN_A_IFINDEX + 1] = {
