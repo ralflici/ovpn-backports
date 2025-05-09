@@ -19,9 +19,9 @@ typedef struct {} netdevice_tracker;
 #define __dev_hold dev_hold
 #define __dev_put dev_put
 
-#if LINUX_VERSION_CODE > KERNEL_VERSION(5, 17, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 18, 0)
 #define __netdev_tracker_alloc netdev_tracker_alloc
-#endif /* LINUX_VERSION_CODE > KERNEL_VERSION(5, 17, 0) */
+#endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(5, 18, 0) */
 
 #endif /* LINUX_VERSION_CODE < KERNEL_VERSION(5, 18, 0) && RHEL_RELEASE_CODE < RHEL_RELEASE_VERSION(9, 1) */
 

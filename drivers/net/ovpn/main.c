@@ -117,7 +117,7 @@ static const struct device_type ovpn_type = {
 	.name = OVPN_FAMILY_NAME,
 };
 
-#if LINUX_VERSION_CODE > KERNEL_VERSION(4, 19, 0) || RHEL_RELEASE_CODE != 0
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 20, 0) || RHEL_RELEASE_CODE != 0
 static const struct nla_policy ovpn_policy[IFLA_OVPN_MAX + 1] = {
 	[IFLA_OVPN_MODE] = NLA_POLICY_RANGE(NLA_U8, OVPN_MODE_P2P,
 					    OVPN_MODE_MP),
@@ -175,6 +175,11 @@ static void ovpn_setup(struct net_device *dev)
 	dev->type = ARPHRD_NONE;
 	dev->flags = IFF_POINTOPOINT | IFF_NOARP;
 	dev->priv_flags |= IFF_NO_QUEUE;
+	/* when routing packets to a LAN behind a client, we rely on the
+	 * route entry that originally brought the packet into ovpn, so
+	 * don't release it
+	 */
+	dev->priv_flags &= ~IFF_XMIT_DST_RELEASE;
 
 	dev->lltx = true;
 	dev->features |= feat;
@@ -282,7 +287,7 @@ static struct rtnl_link_ops ovpn_link_ops = {
 #endif
 	.priv_size = sizeof(struct ovpn_priv),
 	.setup = ovpn_setup,
-#if LINUX_VERSION_CODE > KERNEL_VERSION(4, 19, 0) || RHEL_RELEASE_CODE != 0
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 20, 0) || RHEL_RELEASE_CODE != 0
 	.policy = ovpn_policy,
 #endif
 	.maxtype = IFLA_OVPN_MAX,
@@ -329,3 +334,4 @@ module_exit(ovpn_cleanup);
 MODULE_DESCRIPTION("OpenVPN data channel offload (ovpn)");
 MODULE_AUTHOR("Antonio Quartulli <antonio@openvpn.net>");
 MODULE_LICENSE("GPL");
+MODULE_VERSION("ovpn-net-next/main-6.15.0-rc4-e5ab8b7");

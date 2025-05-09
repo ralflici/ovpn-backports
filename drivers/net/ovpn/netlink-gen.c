@@ -11,21 +11,25 @@
 #include <uapi/linux/ovpn.h>
 
 /* Integer value ranges */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0)
 static
-# if RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(9, 4)
+#if RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(9, 4)
 const
-# endif
+#endif
 struct netlink_range_validation ovpn_a_peer_id_range = {
 	.max	= 16777215ULL,
 };
+#endif
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0)
 static
-# if RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(9, 4)
+#if RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(9, 4)
 const
-# endif
+#endif
 struct netlink_range_validation ovpn_a_keyconf_peer_id_range = {
 	.max	= 16777215ULL,
 };
+#endif
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 8, 0) && RHEL_RELEASE_CODE == 0
 static int ovpn_nla_validate_range(const struct nlattr *attr,
@@ -44,7 +48,7 @@ static int ovpn_nla_validate_range(const struct nlattr *attr,
 
 /* Common nested types */
 const struct nla_policy ovpn_keyconf_nl_policy[OVPN_A_KEYCONF_DECRYPT_DIR + 1] = {
-#if LINUX_VERSION_CODE > KERNEL_VERSION(5, 7, 0) || RHEL_RELEASE_CODE != 0
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0) || RHEL_RELEASE_CODE != 0
 	[OVPN_A_KEYCONF_PEER_ID] = NLA_POLICY_FULL_RANGE(NLA_U32, &ovpn_a_keyconf_peer_id_range),
 #else
 	[OVPN_A_KEYCONF_PEER_ID] = NLA_POLICY_VALIDATE_FN(NLA_U32, ovpn_nla_validate_range),
@@ -62,7 +66,7 @@ const struct nla_policy ovpn_keydir_nl_policy[OVPN_A_KEYDIR_NONCE_TAIL + 1] = {
 };
 
 const struct nla_policy ovpn_peer_nl_policy[OVPN_A_PEER_LINK_TX_PACKETS + 1] = {
-#if LINUX_VERSION_CODE > KERNEL_VERSION(5, 7, 0) || RHEL_RELEASE_CODE != 0
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0) || RHEL_RELEASE_CODE != 0
 	[OVPN_A_PEER_ID] = NLA_POLICY_FULL_RANGE(NLA_U32, &ovpn_a_peer_id_range),
 #else
 	[OVPN_A_PEER_ID] = NLA_POLICY_VALIDATE_FN(NLA_U32, ovpn_nla_validate_range),
@@ -110,7 +114,7 @@ static const struct nla_policy ovpn_peer_get_do_nl_policy[OVPN_A_PEER + 1] = {
 };
 
 /* OVPN_CMD_PEER_GET - dump */
-#if LINUX_VERSION_CODE > KERNEL_VERSION(5, 5, 0) || RHEL_RELEASE_CODE != 0
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 5, 0) || RHEL_RELEASE_CODE != 0
 static
 #endif
 const struct nla_policy ovpn_peer_get_dump_nl_policy[OVPN_A_IFINDEX + 1] = {

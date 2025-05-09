@@ -36,7 +36,7 @@ all:
 clean:
 	$(MAKE) -C $(KERNEL_SRC) $(BUILD_FLAGS) clean
 
-install:
+install: all
 	$(MAKE) -C $(KERNEL_SRC) $(BUILD_FLAGS) modules_install
 	$(DEPMOD)
 
