@@ -23,11 +23,6 @@ get_ovpn() {
 	cp -r $KERNEL_DIR/drivers/net/ovpn $PWD/drivers/net/
 	cp $KERNEL_DIR/include/uapi/linux/ovpn.h $PWD/include/uapi/linux/ovpn.h
 
-	if [ "$keep" -eq "0" ] ; then
-		echo "Cleaning up"
-		rm -rf $KERNEL_DIR
-	fi
-
 	echo "Applying patch"
 	git apply --verbose ovpn.patch
 
@@ -52,6 +47,11 @@ get_ovpn() {
 	version_string="$tree/$branch-$kernel_version-$backports_commit"
 	module_version="MODULE_VERSION(\"$version_string\");"
 	echo "$module_version" >> $PWD/drivers/net/ovpn/main.c
+
+	if [ "$keep" -eq "0" ] ; then
+		echo "Cleaning up"
+		rm -rf $KERNEL_DIR
+	fi
 }
 
 print_usage() {
