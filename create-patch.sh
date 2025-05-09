@@ -1,6 +1,6 @@
 #!/bin/bash
 
-ORIGINAL_DIR=${ORIGINAL_DIR:-net-next/drivers/net/ovpn}
+ORIGINAL_DIR=${ORIGINAL_DIR:-kernel/drivers/net/ovpn}
 MODIFIED_DIR="drivers/net/ovpn"
 
 if [[ $ORIGINAL_DIR =~ ^/ ]]; then
