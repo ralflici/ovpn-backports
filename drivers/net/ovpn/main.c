@@ -334,4 +334,4 @@ module_exit(ovpn_cleanup);
 MODULE_DESCRIPTION("OpenVPN data channel offload (ovpn)");
 MODULE_AUTHOR("Antonio Quartulli <antonio@openvpn.net>");
 MODULE_LICENSE("GPL");
-MODULE_VERSION("ovpn-net-next/main-6.15.0-rc4-e5ab8b7");
+MODULE_VERSION("ovpn-net-next/sources-6.15.0-rc4-41d2b52");
