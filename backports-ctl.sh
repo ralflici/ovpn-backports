@@ -48,8 +48,13 @@ get_ovpn() {
 	module_version="MODULE_VERSION(\"$version_string\");"
 	echo "$module_version" >> $PWD/drivers/net/ovpn/main.c
 
-	# Save the version string for the tag
-	echo "$version_string" > $PWD/.version
+	# Save details used for tag creation to a file (as key=value pairs)
+	cat << EOF > "$PWD/.version"
+tree=${tree}
+branch=${branch}
+kernel_version=${kernel_version}
+backports_commit=${backports_commit}
+EOF
 
 	if [ "$keep" -eq "0" ] ; then
 		echo "Cleaning up"

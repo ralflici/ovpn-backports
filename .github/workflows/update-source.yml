@@ -45,7 +45,11 @@ jobs:
           git add -f drivers/net/ovpn include/uapi/linux/ovpn.h
           git add .
 
-          VERSION="${$(cat .version)%-*}-$(date +%Y%m%d)"
+          # VERSION: $tree/$branch-$kernel_version-$date
+          source ./.version
+          # override branch otherwise it will be `sources`
+          branch="${GITHUB_REF#refs/heads/}"
+          VERSION="${tree}/${branch}-${kernel_version}-$(date +%Y%m%d)"
           git commit -m "Generated sources for ${VERSION}"
           git tag -f "${VERSION}"
 
