@@ -128,7 +128,11 @@ static int ovpn_udp_encap_recv(struct sock *sk, struct sk_buff *skb)
 	return 0;
 
 drop:
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 14, 0)
+	dev_dstats_rx_dropped(ovpn->dev);
+#else
 	dev_core_stats_rx_dropped_inc(ovpn->dev);
+#endif
 drop_noovpn:
 	kfree_skb(skb);
 	return 0;
@@ -270,6 +274,16 @@ static int ovpn_udp6_output(struct ovpn_peer *peer, struct ovpn_bind *bind,
 	dst_cache_set_ip6(cache, dst, &fl.saddr);
 
 transmit:
+	/* user IPv6 packets may be larger than the transport interface
+	 * MTU (after encapsulation), however, since they are locally
+	 * generated we should ensure they get fragmented.
+	 * Setting the ignore_df flag to 1 will instruct ip6_fragment() to
+	 * fragment packets if needed.
+	 *
+	 * NOTE: this is not needed for IPv4 because we pass df=0 to
+	 * udp_tunnel_xmit_skb()
+	 */
+	skb->ignore_df = 1;
 	udp_tunnel6_xmit_skb(dst, sk, skb, skb->dev, &fl.saddr, &fl.daddr, 0,
 			     ip6_dst_hoplimit(dst), 0, fl.fl6_sport,
 			     fl.fl6_dport, udp_get_no_check6_tx(sk));

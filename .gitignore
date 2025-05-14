@@ -2,6 +2,7 @@
 .tmp_versions/
 .clangd
 .clang-format
+.version
 .Module.symvers.cmd
 .modules.order.cmd
 .module-common.o
@@ -9,11 +10,12 @@
 Module.symvers
 modules.order
 config
-check-kernel-config.sh
 compile_commands.json
 
 kernel/
+kernel
 net-next/
+net-next
 drivers/
 include/
 ovpn.cfg

@@ -11,10 +11,6 @@ CP := cp -fpR
 LN := ln -sf
 DEPMOD := depmod -a
 
-# REVISION= $(shell	if [ -d "$(PWD)/.git" ]; then \
-# 				echo $$(git --git-dir="$(PWD)/.git" describe --always --dirty --match "v*" |sed 's/^v//' 2> /dev/null || echo "[unknown]"); \
-# 			fi)
-
 ifneq ("$(wildcard $(KERNEL_SRC)/include/generated/uapi/linux/suse_version.h)","")
 VERSION_INCLUDE = -include linux/suse_version.h
 endif
@@ -25,17 +21,12 @@ NOSTDINC_FLAGS += \
 	-include $(PWD)/linux-compat.h \
 	$(CFLAGS)
 
-ifneq ($(REVISION),)
-NOSTDINC_FLAGS += -DOVPN_VERSION=\"$(REVISION)\"
-endif
-
 obj-y += drivers/net/ovpn/
 export ovpn
 
 BUILD_FLAGS := \
 	M=$(PWD) \
 	PWD=$(PWD) \
-	REVISION=$(REVISION) \
 	CONFIG_OVPN=m \
 	INSTALL_MOD_DIR=updates/
 
@@ -45,7 +36,7 @@ all:
 clean:
 	$(MAKE) -C $(KERNEL_SRC) $(BUILD_FLAGS) clean
 
-install:
+install: all
 	$(MAKE) -C $(KERNEL_SRC) $(BUILD_FLAGS) modules_install
 	$(DEPMOD)
 

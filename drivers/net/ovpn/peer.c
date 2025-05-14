@@ -258,7 +258,7 @@ void ovpn_peer_endpoints_update(struct ovpn_peer *peer, struct sk_buff *skb)
 		 */
 		if (unlikely(!ipv6_addr_equal(&bind->local.ipv6,
 					      &ipv6_hdr(skb)->daddr))) {
-			net_dbg_ratelimited("%s: learning local IPv6 for peer %d (%pI6c -> %pI6c\n",
+			net_dbg_ratelimited("%s: learning local IPv6 for peer %d (%pI6c -> %pI6c)\n",
 					    netdev_name(peer->ovpn->dev),
 					    peer->id, &bind->local.ipv6,
 					    &ipv6_hdr(skb)->daddr);
@@ -1369,7 +1369,7 @@ void ovpn_peer_keepalive_work(struct work_struct *work)
 	}
 
 	/* prevent rearming if the interface is being destroyed */
-	if (next_run > 0 && ovpn->registered) {
+	if (next_run > 0) {
 		netdev_dbg(ovpn->dev,
 			   "scheduling keepalive work: now=%llu next_run=%llu delta=%llu\n",
 			   next_run, now, next_run - now);
