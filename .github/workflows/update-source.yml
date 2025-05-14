@@ -10,6 +10,7 @@ on:
   push:
     branches:
       - main
+      - development
 
 jobs:
   update-sources:
@@ -28,12 +29,23 @@ jobs:
 
       - name: Checkout Sources and Merge with Main
         run: |
-          git fetch origin sources || true
-          git checkout -b sources origin/sources || git checkout -b sources
+          # Determine the push branch (main or development)
+          branch="${GITHUB_REF#refs/heads/}"
+
+          # Set the target branch name based on the push branch.
+          # For pushes on main, we use "sources"; for development, we use "development-sources"
+          if [ "$branch" = "main" ]; then
+            target_branch="sources"
+          else
+            target_branch="development-sources"
+          fi
+
+          git fetch origin "$target_branch" || true
+          git checkout -b "$target_branch" "origin/$target_branch" 2>/dev/null || git checkout -b "$target_branch"
 
           # There should be no merge conflicts, but if there are, we want to
-          # keep the changes from the main branch
-          git merge origin/main --no-commit --no-ff -X theirs
+          # keep the changes from the main/development branch
+          git merge "origin/$branch" --no-commit --no-ff -X theirs
 
       - name: Generate the new source files
         run: |
@@ -53,7 +65,14 @@ jobs:
           git commit -m "Generated sources for ${VERSION}"
           git tag -f "${VERSION}"
 
-          git push origin sources
+          # Determine the correct branch to push to
+          if [ "$branch" = "main" ]; then
+            target_branch="sources"
+          else
+            target_branch="development-sources"
+          fi
+
+          git push origin "$target_branch"
           git push origin --tags --force
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
