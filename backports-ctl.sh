@@ -39,14 +39,17 @@ get_ovpn() {
 	# Version of the kernel from where the ovpn sources were extracted.
 	kernel_version=$(make -s -C $KERNEL_DIR kernelversion)
 
-    # This indirectly indicates also the ovpn-net-next commit used for
-    # generating the backports.
+	# This indirectly indicates also the ovpn-net-next commit used for
+	# generating the backports.
 	backports_commit=$(git rev-parse --short HEAD)
 
 	sed -i '/^MODULE_VERSION(/d' $PWD/drivers/net/ovpn/main.c
 	version_string="$tree/$branch-$kernel_version-$backports_commit"
 	module_version="MODULE_VERSION(\"$version_string\");"
 	echo "$module_version" >> $PWD/drivers/net/ovpn/main.c
+
+	# Save the version string for the tag
+	echo "$version_string" > $PWD/.version
 
 	if [ "$keep" -eq "0" ] ; then
 		echo "Cleaning up"

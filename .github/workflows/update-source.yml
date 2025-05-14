@@ -45,9 +45,9 @@ jobs:
           git add -f drivers/net/ovpn include/uapi/linux/ovpn.h
           git add .
 
-          VERSION=$(date +%Y%m%d)
-          git commit -m "Generated sources for v${VERSION}"
-          git tag -f "v${VERSION}"
+          VERSION="${$(cat .version)%-*}-$(date +%Y%m%d)"
+          git commit -m "Generated sources for ${VERSION}"
+          git tag -f "${VERSION}"
 
           git push origin sources
           git push origin --tags --force
