@@ -559,7 +559,7 @@ index bea0391..146d34d 100644
  {
  	int ret = genl_register_family(&ovpn_nl_family);
 diff --git a/drivers/net/ovpn/netlink-gen.c b/drivers/net/ovpn/netlink-gen.c
-index 58e1a43..c075c63 100644
+index 58e1a43..074415e 100644
 --- a/drivers/net/ovpn/netlink-gen.c
 +++ b/drivers/net/ovpn/netlink-gen.c
 @@ -11,17 +11,48 @@
@@ -567,7 +567,7 @@ index 58e1a43..c075c63 100644
  
  /* Integer value ranges */
 -static const struct netlink_range_validation ovpn_a_peer_id_range = {
-+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0)
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0) || RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(8, 10)
 +static
 +#if RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(9, 4)
 +const
@@ -578,7 +578,7 @@ index 58e1a43..c075c63 100644
 +#endif
  
 -static const struct netlink_range_validation ovpn_a_keyconf_peer_id_range = {
-+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0)
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0) || RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(8, 10)
 +static
 +#if RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(9, 4)
 +const
