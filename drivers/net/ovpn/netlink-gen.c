@@ -11,7 +11,7 @@
 #include <uapi/linux/ovpn.h>
 
 /* Integer value ranges */
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0) || RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(8, 10)
 static
 #if RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(9, 4)
 const
@@ -21,7 +21,7 @@ struct netlink_range_validation ovpn_a_peer_id_range = {
 };
 #endif
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0) || RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(8, 10)
 static
 #if RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(9, 4)
 const
