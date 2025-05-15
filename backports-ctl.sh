@@ -3,7 +3,7 @@
 set -e
 
 KERNEL_REPO_URL='https://github.com/OpenVPN/ovpn-net-next.git'
-KERNEL_COMMIT=${KERNEL_COMMIT:-'476148af4e28f498bf769eeed81ef99728544c56'}
+KERNEL_COMMIT=${KERNEL_COMMIT:-'204010a1ee8b8afefd2a5b08ab3bd1f9c11491be'}
 KERNEL_DIR="$PWD/kernel"
 
 get_ovpn() {
