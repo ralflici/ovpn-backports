@@ -36,7 +36,7 @@ struct ovpn_socket {
 		struct ovpn_peer *peer;
 	};
 
-	struct socket *sock;
+	struct sock *sk;
 	struct kref refcount;
 	struct work_struct work;
 	struct work_struct tcp_tx_work;
