@@ -1,5 +1,5 @@
 diff --git a/drivers/net/ovpn/crypto_aead.c b/drivers/net/ovpn/crypto_aead.c
-index 74ee639..ac63a64 100644
+index 2cca759..ff44ea5 100644
 --- a/drivers/net/ovpn/crypto_aead.c
 +++ b/drivers/net/ovpn/crypto_aead.c
 @@ -36,6 +36,13 @@ static int ovpn_aead_encap_overhead(const struct ovpn_crypto_key_slot *ks)
@@ -16,7 +16,7 @@ index 74ee639..ac63a64 100644
  int ovpn_aead_encrypt(struct ovpn_peer *peer, struct ovpn_crypto_key_slot *ks,
  		      struct sk_buff *skb)
  {
-@@ -135,7 +142,11 @@ int ovpn_aead_encrypt(struct ovpn_peer *peer, struct ovpn_crypto_key_slot *ks,
+@@ -138,7 +145,11 @@ int ovpn_aead_encrypt(struct ovpn_peer *peer, struct ovpn_crypto_key_slot *ks,
  
  	/* setup async crypto operation */
  	aead_request_set_tfm(req, ks->encrypt);
@@ -28,7 +28,7 @@ index 74ee639..ac63a64 100644
  	aead_request_set_crypt(req, sg, sg,
  			       skb->len - ovpn_aead_encap_overhead(ks), iv);
  	aead_request_set_ad(req, OVPN_AAD_SIZE);
-@@ -144,6 +155,13 @@ int ovpn_aead_encrypt(struct ovpn_peer *peer, struct ovpn_crypto_key_slot *ks,
+@@ -147,6 +158,13 @@ int ovpn_aead_encrypt(struct ovpn_peer *peer, struct ovpn_crypto_key_slot *ks,
  	return crypto_aead_encrypt(req);
  }
  
@@ -42,7 +42,7 @@ index 74ee639..ac63a64 100644
  int ovpn_aead_decrypt(struct ovpn_peer *peer, struct ovpn_crypto_key_slot *ks,
  		      struct sk_buff *skb)
  {
-@@ -227,7 +245,11 @@ int ovpn_aead_decrypt(struct ovpn_peer *peer, struct ovpn_crypto_key_slot *ks,
+@@ -233,7 +251,11 @@ int ovpn_aead_decrypt(struct ovpn_peer *peer, struct ovpn_crypto_key_slot *ks,
  
  	/* setup async crypto operation */
  	aead_request_set_tfm(req, ks->decrypt);
@@ -143,7 +143,7 @@ index 10d8afe..b321033 100644
  	kfree_skb_list(skb);
  	return NETDEV_TX_OK;
 diff --git a/drivers/net/ovpn/main.c b/drivers/net/ovpn/main.c
-index dcc094b..9773217 100644
+index 1bb1afe..8f3ed94 100644
 --- a/drivers/net/ovpn/main.c
 +++ b/drivers/net/ovpn/main.c
 @@ -85,6 +85,12 @@ static int ovpn_net_init(struct net_device *dev)
