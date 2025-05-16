@@ -179,7 +179,7 @@ static void ovpn_setup(struct net_device *dev)
 	 * route entry that originally brought the packet into ovpn, so
 	 * don't release it
 	 */
-	dev->priv_flags &= ~IFF_XMIT_DST_RELEASE;
+	netif_keep_dst(dev);
 
 	dev->lltx = true;
 	dev->features |= feat;
@@ -334,4 +334,4 @@ module_exit(ovpn_cleanup);
 MODULE_DESCRIPTION("OpenVPN data channel offload (ovpn)");
 MODULE_AUTHOR("Antonio Quartulli <antonio@openvpn.net>");
 MODULE_LICENSE("GPL");
-MODULE_VERSION("ovpn-net-next/sources-6.15.0-rc4-0b91b78");
+MODULE_VERSION("ovpn-net-next/sources-6.15.0-rc5-7ff7081");
