@@ -218,7 +218,7 @@ void ovpn_tcp_socket_detach(struct ovpn_socket *ovpn_sock)
 	sk->sk_prot = peer->tcp.sk_cb.prot;
 	sk->sk_socket->ops = peer->tcp.sk_cb.ops;
 
-	rcu_assign_sk_user_data(sock->sk, NULL);
+	rcu_assign_sk_user_data(sk, NULL);
 }
 
 void ovpn_tcp_socket_wait_finish(struct ovpn_socket *sock)

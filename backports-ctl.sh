@@ -3,7 +3,7 @@
 set -e
 
 KERNEL_REPO_URL='https://github.com/OpenVPN/ovpn-net-next.git'
-KERNEL_COMMIT=${KERNEL_COMMIT:-'204010a1ee8b8afefd2a5b08ab3bd1f9c11491be'}
+KERNEL_COMMIT=${KERNEL_COMMIT:-'a62faff79d746ef1bd6fa5f266258f8ed6c06a0f'}
 KERNEL_DIR="$PWD/kernel"
 
 get_ovpn() {
@@ -18,10 +18,11 @@ get_ovpn() {
 	git -C $KERNEL_DIR reset --hard $KERNEL_COMMIT
 
 	echo "Extracting ovpn source files"
-	rm -fr $PWD/drivers/ $PWD/include/
+	rm -fr $PWD/drivers/ $PWD/include/ $PWD/tests/ovpn-cli $PWD/.version
 	mkdir -p $PWD/drivers/net $PWD/include/uapi/linux
 	cp -r $KERNEL_DIR/drivers/net/ovpn $PWD/drivers/net/
 	cp $KERNEL_DIR/include/uapi/linux/ovpn.h $PWD/include/uapi/linux/ovpn.h
+    cp -r $KERNEL_DIR/tools/testing/selftests/net/ovpn $PWD/tests/ovpn-cli
 
 	echo "Applying patch"
 	git apply --verbose ovpn.patch

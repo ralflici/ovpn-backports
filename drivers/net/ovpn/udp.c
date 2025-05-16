@@ -385,6 +385,7 @@ static void ovpn_udp_encap_destroy(struct sock *sk)
 /**
  * ovpn_udp_socket_attach - set udp-tunnel CBs on socket and link it to ovpn
  * @ovpn_sock: socket to configure
+ * @sock: the socket container to be passed to setup_udp_tunnel_sock()
  * @ovpn: the openvp instance to link
  *
  * After invoking this function, the sock will be controlled by ovpn so that
