@@ -8,9 +8,11 @@
 
 static inline void ovpn_cleanup_udp_tunnel_sock(struct sock *sk)
 {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0)
 	/* Re-enable multicast loopback */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0)
 	inet_set_bit(MC_LOOP, sk);
+#else
+	inet_sk(sk)->mc_loop = 1;
 #endif
 
 	/* Disable CHECKSUM_UNNECESSARY to CHECKSUM_COMPLETE conversion */
