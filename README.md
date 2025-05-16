@@ -6,7 +6,13 @@ The ovpn kernel module is part of the Linux kernel starting from version 6.15. I
 
 ### Pre-patched sources
 
+#### Tags
+
 A pre-patched version of the source files is available for download in the [tags](https://github.com/OpenVPN/ovpn-backports/tags) section of this repository. After downloading, you can simply run `make && make install` to build and install the module.
+
+#### Sources branch
+
+Another way of downloading the pre-patched sources is to clone the repository and checkout the `sources` branch (or `development-sources` if you want to track `ovpn-net-next/development`). Then simply run `make && make install` to build and install the module.
 
 ### Building from source
 
