@@ -30,15 +30,19 @@ BUILD_FLAGS := \
 	CONFIG_OVPN=m \
 	INSTALL_MOD_DIR=updates/
 
-all:
+all: ovpn-cli
 	$(MAKE) -C $(KERNEL_SRC) $(BUILD_FLAGS) modules
 
 clean:
 	$(MAKE) -C $(KERNEL_SRC) $(BUILD_FLAGS) clean
+	$(MAKE) -C $(PWD)/tests/ovpn-cli $(BUILD_FLAGS) clean
 
 install: all
 	$(MAKE) -C $(KERNEL_SRC) $(BUILD_FLAGS) modules_install
 	$(DEPMOD)
 
-.PHONY: all clean install
+ovpn-cli:
+	$(MAKE) -C $(PWD)/tests/ovpn-cli $(BUILD_FLAGS) ovpn-cli
+
+.PHONY: all clean install ovpn-cli
 

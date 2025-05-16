@@ -54,7 +54,7 @@ jobs:
 
       - name: Commit and Push Changes
         run: |
-          git add -f drivers/net/ovpn include/uapi/linux/ovpn.h
+          git add -f drivers/net/ovpn include/uapi/linux/ovpn.h tests/ovpn-cli
           git add .
 
           # VERSION: $tree/$branch-$kernel_version-$date

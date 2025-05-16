@@ -62,6 +62,11 @@ will install the ovpn.ko kernel module in the updates/ subfolder of the kernel m
 
 ## Testing
 
+Alongside the source files, the `tests/ovpn-cli` directory contains kernel selftests and the handy `ovpn-cli` tool. To compile it, simply run `make ovpn-cli` from the root directory of the repository.
+This tool is essential for executing selftests and is also useful for debugging. You can explore its capabilities by running `./ovpn-cli`.
+
+### Kernel versions
+
 The module should successfully load and run kernel selftests on the following distributions:
  - Ubuntu 20.04
  - Ubuntu 22.04
