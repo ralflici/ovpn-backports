@@ -922,3 +922,58 @@ index b4fbeba..bfe5033 100644
  		ret = PTR_ERR(dst);
  		net_dbg_ratelimited("%s: no route to host %pISpc: %d\n",
  				    netdev_name(peer->ovpn->dev),
+diff --git a/tests/ovpn-cli/Makefile b/tests/ovpn-cli/Makefile
+index e0926d7..ba27b36 100644
+--- a/tests/ovpn-cli/Makefile
++++ b/tests/ovpn-cli/Makefile
+@@ -8,6 +8,7 @@ VAR_CFLAGS = -I/usr/include/libnl3
+ endif
+ CFLAGS += $(VAR_CFLAGS)
+ 
++CFLAGS += -I../../include/uapi -I..
+ 
+ LDLIBS = -lmbedtls -lmbedcrypto
+ VAR_LDLIBS = $(shell pkg-config --libs libnl-3.0 libnl-genl-3.0 2>/dev/null)
+@@ -29,4 +30,9 @@ TEST_PROGS = test.sh \
+ 
+ TEST_GEN_FILES := ovpn-cli
+ 
+-include ../../lib.mk
++all: $(TEST_GEN_FILES)
++
++clean:
++	rm -f $(TEST_GEN_FILES)
++
++.PHONY: all clean
+diff --git a/tests/ovpn-cli/ovpn-cli.c b/tests/ovpn-cli/ovpn-cli.c
+index de9c26f..c23427e 100644
+--- a/tests/ovpn-cli/ovpn-cli.c
++++ b/tests/ovpn-cli/ovpn-cli.c
+@@ -17,6 +17,7 @@
+ #include <netinet/in.h>
+ #include <time.h>
+ 
++#include <ovpn-cli.h>
+ #include <linux/ovpn.h>
+ #include <linux/types.h>
+ #include <linux/netlink.h>
+@@ -278,15 +279,19 @@ static int ovpn_nl_cb_error(struct sockaddr_nl (*nla)__always_unused,
+ 			(char *)nla_data(tb_msg[NLMSGERR_ATTR_MSG]));
+ 	}
+ 
++#ifdef NLMSGERR_ATTR_MISS_NEST
+ 	if (tb_msg[NLMSGERR_ATTR_MISS_NEST]) {
+ 		fprintf(stderr, "missing required nesting type %u\n",
+ 			nla_get_u32(tb_msg[NLMSGERR_ATTR_MISS_NEST]));
+ 	}
++#endif
+ 
++#ifdef NLMSGERR_ATTR_MISS_TYPE
+ 	if (tb_msg[NLMSGERR_ATTR_MISS_TYPE]) {
+ 		fprintf(stderr, "missing required attribute type %u\n",
+ 			nla_get_u32(tb_msg[NLMSGERR_ATTR_MISS_TYPE]));
+ 	}
++#endif
+ 
+ 	return NL_STOP;
+ }
