@@ -1,23 +1,45 @@
 #!/bin/bash
 
-ORIGINAL_DIR=${ORIGINAL_DIR:-kernel/drivers/net/ovpn}
-MODIFIED_DIR="drivers/net/ovpn"
+ORIG_SOURCES_DIR=${ORIG_SOURCES_DIR:-kernel/drivers/net/ovpn}
+ORIG_TESTS_DIR=${ORIG_TESTS_DIR:-kernel/tools/testing/selftests/net/ovpn}
+MOD_SOURCES_DIR="drivers/net/ovpn"
+MOD_TESTS_DIR="tests/ovpn-cli"
 
-if [[ $ORIGINAL_DIR =~ ^/ ]]; then
-	substr="${ORIGINAL_DIR:1}"
-	ESCAPED_ORIGINAL_DIR="${substr//\//\\\/}"
+# create the escaped version of the directories
+if [[ $ORIG_SOURCES_DIR =~ ^/ ]]; then
+	substr="${ORIG_SOURCES_DIR:1}"
+	ESC_ORIG_SOURCES_DIR="${substr//\//\\\/}"
 else
-	ESCAPED_ORIGINAL_DIR="${ORIGINAL_DIR//\//\\\/}"
+	ESC_ORIG_SOURCES_DIR="${ORIG_SOURCES_DIR//\//\\\/}"
 fi
-ESCAPED_MODIFIED_DIR="${MODIFIED_DIR//\//\\\/}"
+
+if [[ $ORIG_TESTS_DIR =~ ^/ ]]; then
+	substr="${ORIG_TESTS_DIR:1}"
+	ESC_ORIG_TESTS_DIR="${substr//\//\\\/}"
+else
+	ESC_ORIG_TESTS_DIR="${ORIG_TESTS_DIR//\//\\\/}"
+fi
+
+ESC_MOD_SOURCES_DIR="${MOD_SOURCES_DIR//\//\\\/}"
+ESC_MOD_TESTS_DIR="${MOD_TESTS_DIR//\//\\\/}"
 
 rm -f temp.patch
 
-for filepath in "$ORIGINAL_DIR"/*; do
+# handle the source files
+for filepath in "$ORIG_SOURCES_DIR"/*; do
     base=$(basename "$filepath")
-    if [ -f "$MODIFIED_DIR/$base" ]; then
-        git diff --no-index "$filepath" "$MODIFIED_DIR/$base" >> temp.patch
+    if [ -f "$MOD_SOURCES_DIR/$base" ]; then
+        git diff --no-index "$filepath" "$MOD_SOURCES_DIR/$base" >> temp.patch
     fi
 done
 
-sed -i "s/$ESCAPED_ORIGINAL_DIR/$ESCAPED_MODIFIED_DIR/" temp.patch
+# handle the test files
+for filepath in "$ORIG_TESTS_DIR"/*; do
+    base=$(basename "$filepath")
+    if [ -f "$MOD_TESTS_DIR/$base" ]; then
+        git diff --no-index "$filepath" "$MOD_TESTS_DIR/$base" >> temp.patch
+    fi
+done
+
+sed -i "s/$ESC_ORIG_SOURCES_DIR/$ESC_MOD_SOURCES_DIR/" temp.patch
+sed -i "s/$ESC_ORIG_TESTS_DIR/$ESC_MOD_TESTS_DIR/" temp.patch
