@@ -6,7 +6,13 @@ The ovpn kernel module is part of the Linux kernel starting from version 6.15. I
 
 ### Pre-patched sources
 
+#### Tags
+
 A pre-patched version of the source files is available for download in the [tags](https://github.com/OpenVPN/ovpn-backports/tags) section of this repository. After downloading, you can simply run `make && make install` to build and install the module.
+
+#### Sources branch
+
+Another way of downloading the pre-patched sources is to clone the repository and checkout the `sources` branch (or `development-sources` if you want to track `ovpn-net-next/development`). Then simply run `make && make install` to build and install the module.
 
 ### Building from source
 
@@ -55,6 +61,11 @@ will install the ovpn.ko kernel module in the updates/ subfolder of the kernel m
 > **_NOTE:_** If Secure Boot is enabled, you need to sign the module before loading it. Check [this](https://askubuntu.com/questions/760671/could-not-load-vboxdrv-after-upgrade-to-ubuntu-16-04-and-i-want-to-keep-secur/768310#768310) tutorial on how to sign a custom kernel module.
 
 ## Testing
+
+Alongside the source files, the `tests/ovpn-cli` directory contains kernel selftests and the handy `ovpn-cli` tool. To compile it, simply run `make ovpn-cli` from the root directory of the repository.
+This tool is essential for executing selftests and is also useful for debugging. You can explore its capabilities by running `./ovpn-cli`.
+
+### Kernel versions
 
 The module should successfully load and run kernel selftests on the following distributions:
  - Ubuntu 20.04
