@@ -18,4 +18,5 @@ net-next/
 net-next
 drivers/
 include/
+tests/ovpn-cli
 ovpn.cfg
