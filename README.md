@@ -77,5 +77,6 @@ The module should successfully load and run kernel selftests on the following di
  - Debian 12.10
  - Debian 11.6
  - RHEL 10.0
- - RHEL 9.0 - 9.5
+ - RHEL 9.0 - 9.6
  - RHEL 8.10
+ - openSUSE Tumbleweed/Slowroll

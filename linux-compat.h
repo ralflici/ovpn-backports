@@ -3,6 +3,9 @@
 
 #include <linux/kconfig.h>
 #include <linux/version.h>
+#if __has_include("linux/suse_version.h")
+#include <linux/suse_version.h>
+#endif
 
 /*
  *  Red Hat Enterprise Linux and SUSE Linux Enterprise kernels provide
@@ -79,6 +82,8 @@ static inline unsigned long ovpn_kallsyms_lookup_name(const char *name)
 #define UDP_ENCAP_OVPNINUDP 8 /* transport layer */
 #endif /* UDP_ENCAP_OVPNINUDP */
 
+#if SUSE_PRODUCT_CODE < SUSE_PRODUCT(3, 0, 0, 0)
+
 enum ovpn_mode {
 	OVPN_MODE_P2P,
 	OVPN_MODE_MP,
@@ -91,6 +96,8 @@ enum {
 };
 
 #define IFLA_OVPN_MAX (__IFLA_OVPN_MAX - 1)
+
+#endif /* SUSE_PRODUCT_CODE < SUSE_PRODUCT(3, 0, 0, 0) */
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 19, 0)
 
