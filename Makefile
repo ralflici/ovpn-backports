@@ -28,6 +28,7 @@ BUILD_FLAGS := \
 	M=$(PWD) \
 	PWD=$(PWD) \
 	CONFIG_OVPN=m \
+	CFLAGS_MODULE="-DDEBUG" \
 	INSTALL_MOD_DIR=updates/
 
 all:
