@@ -57,11 +57,25 @@ jobs:
           git add -f drivers/net/ovpn include/uapi/linux/ovpn.h tests/ovpn-cli
           git add .
 
-          # VERSION: $tree/$branch-$kernel_version-$date
+          # Retrieve the version variables
           source ./.version
-          # override branch otherwise it will be `sources`
+          # Override branch otherwise it will contain `sources`
           branch="${GITHUB_REF#refs/heads/}"
-          VERSION="${tree}/${branch}-${kernel_version}-$(date +%Y%m%d)"
+
+          # Add a 2 digit monithonically increasing counter to allow multiple
+          # tags per day. To do this, we need to find the last tag for the
+          # current branch and date, and increment it by 1 starting from 00.
+          current_date=$(date +%Y%m%d)
+          suffix="$(git tag --sort=-creatordate | grep -E "^${tree}/${branch}-${kernel_version}-" | head -n1 | sed 's/.*-//')"
+          tag_date=$(echo "$suffix" | cut -c1-8)
+          counter=$(echo "$suffix" | cut -c9-10)
+          if [ "$tag_date" != "$current_date" ] || [ -z "$counter" ] || [ "${#counter}" != 2 ]; then
+            counter="00"
+          else
+            counter=$(printf "%02d" $((10#$counter + 1)))
+          fi
+
+          VERSION="${tree}/${branch}-${kernel_version}-${current_date}${counter}"
           git commit -m "Generated sources for ${VERSION}"
           git tag -f "${VERSION}"
 
