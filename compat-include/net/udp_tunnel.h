@@ -30,6 +30,15 @@ static inline void ovpn_cleanup_udp_tunnel_sock(struct sock *sk)
 	udp_sk(sk)->gro_receive = NULL;
 	udp_sk(sk)->gro_complete = NULL;
 
+	/* udp_destroy_sock() will first set the SOCK_DEAD flag
+	 * and then decrease the udp_encap_key *WITHOUT*
+	 * unsetting the UDP ENCAP_ENABLED bit.
+	 * To avoid a double decrease, bail out if SOCK_DEAD
+	 * is set.
+	 */
+	if (sock_flag(sk, SOCK_DEAD))
+		return;
+
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 7, 0)
 	udp_clear_bit(ENCAP_ENABLED, sk);
 #else
