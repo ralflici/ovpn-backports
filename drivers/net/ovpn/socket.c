@@ -82,23 +82,12 @@ void ovpn_socket_release(struct ovpn_peer *peer)
 	 * Holding the lock ensures that a socket with refcnt 0 is fully
 	 * detached before it can be picked by a concurrent reader.
 	 */
-	struct static_key_false *udp_encap_needed_key = (struct static_key_false *)kallsyms_lookup_name("udp_encap_needed_key");
-
-	printk("%s %s: 1 udp_encap=%d\n", __func__, peer->ovpn->dev->name,
-	       atomic_read(&udp_encap_needed_key->key.enabled));
-
 	lock_sock(sock->sk);
 	released = ovpn_socket_put(peer, sock);
 	release_sock(sock->sk);
 
-	printk("%s %s: 2 udp_encap=%d\n", __func__, peer->ovpn->dev->name,
-	       atomic_read(&udp_encap_needed_key->key.enabled));
-
 	/* align all readers with sk_user_data being NULL */
 	synchronize_rcu();
-
-	printk("%s %s: 3 udp_encap=%d\n", __func__, peer->ovpn->dev->name,
-	       atomic_read(&udp_encap_needed_key->key.enabled));
 
 	/* following cleanup should happen with lock released */
 	if (released) {
@@ -147,11 +136,6 @@ struct ovpn_socket *ovpn_socket_new(struct socket *sock, struct ovpn_peer *peer)
 	struct ovpn_socket *ovpn_sock;
 	struct sock *sk = sock->sk;
 	int ret;
-
-	struct static_key_false *udp_encap_needed_key = (struct static_key_false *)kallsyms_lookup_name("udp_encap_needed_key");
-
-	printk("%s %s: 1 udp_encap=%d\n", __func__, peer->ovpn->dev->name,
-	       atomic_read(&udp_encap_needed_key->key.enabled));
 
 	lock_sock(sk);
 
@@ -253,8 +237,5 @@ struct ovpn_socket *ovpn_socket_new(struct socket *sock, struct ovpn_peer *peer)
 	rcu_assign_sk_user_data(sk, ovpn_sock);
 sock_release:
 	release_sock(sk);
-	printk("%s %s: 2 udp_encap=%d\n", __func__, peer->ovpn->dev->name,
-	       atomic_read(&udp_encap_needed_key->key.enabled));
-
 	return ovpn_sock;
 }

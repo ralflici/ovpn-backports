@@ -423,8 +423,6 @@ int ovpn_nl_peer_new_doit(struct sk_buff *skb, struct genl_info *info)
 	u32 sockfd, peer_id;
 	int ret;
 
-	struct static_key_false *udp_encap_needed_key = (struct static_key_false *)kallsyms_lookup_name("udp_encap_needed_key");
-
 	if (GENL_REQ_ATTR_CHECK(info, OVPN_A_PEER))
 		return -EINVAL;
 
@@ -535,21 +533,12 @@ int ovpn_nl_peer_new_doit(struct sk_buff *skb, struct genl_info *info)
 	return 0;
 
 sock_release:
-	printk("%s %s: 1 udp_encap=%d\n", __func__, ovpn->dev->name,
-	       atomic_read(&udp_encap_needed_key->key.enabled));
-
 	ovpn_socket_release(peer);
 peer_release:
-	printk("%s %s: 2 udp_encap=%d\n", __func__, ovpn->dev->name,
-	       atomic_read(&udp_encap_needed_key->key.enabled));
-
 	/* release right away because peer was not yet hashed, thus it is not
 	 * used in any context
 	 */
 	ovpn_peer_release(peer);
-
-	printk("%s %s: 3 udp_encap=%d\n", __func__, ovpn->dev->name,
-	       atomic_read(&udp_encap_needed_key->key.enabled));
 
 	return ret;
 }
@@ -897,8 +886,6 @@ int ovpn_nl_peer_del_doit(struct sk_buff *skb, struct genl_info *info)
 	u32 peer_id;
 	int ret;
 
-	struct static_key_false *udp_encap_needed_key = (struct static_key_false *)kallsyms_lookup_name("udp_encap_needed_key");
-
 	if (GENL_REQ_ATTR_CHECK(info, OVPN_A_PEER))
 		return -EINVAL;
 
@@ -920,11 +907,7 @@ int ovpn_nl_peer_del_doit(struct sk_buff *skb, struct genl_info *info)
 	}
 
 	netdev_dbg(ovpn->dev, "del peer %u\n", peer->id);
-	printk("%s %s: 1 udp_encap=%d\n", __func__, ovpn->dev->name,
-	       atomic_read(&udp_encap_needed_key->key.enabled));
 	ret = ovpn_peer_del(peer, OVPN_DEL_PEER_REASON_USERSPACE);
-	printk("%s %s: 2 udp_encap=%d\n", __func__, ovpn->dev->name,
-	       atomic_read(&udp_encap_needed_key->key.enabled));
 	ovpn_peer_put(peer);
 
 	return ret;
