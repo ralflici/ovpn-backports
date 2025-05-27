@@ -1,0 +1,41 @@
+diff --git a/drivers/net/ovpn/udp.c b/drivers/net/ovpn/udp.c
+index aef8c04..73fa6cf 100644
+--- a/drivers/net/ovpn/udp.c
++++ b/drivers/net/ovpn/udp.c
+@@ -14,7 +14,9 @@
+ #include <net/addrconf.h>
+ #include <net/dst_cache.h>
+ #include <net/route.h>
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 2, 0) || RHEL_RELEASE_CODE != 0
+ #include <net/ipv6_stubs.h>
++#endif
+ #include <net/transp_v6.h>
+ #include <net/udp.h>
+ #include <net/udp_tunnel.h>
+@@ -126,7 +128,11 @@ static int ovpn_udp_encap_recv(struct sock *sk, struct sk_buff *skb)
+ 	return 0;
+ 
+ drop:
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 14, 0)
+ 	dev_dstats_rx_dropped(ovpn->dev);
++#else
++	dev_core_stats_rx_dropped_inc(ovpn->dev);
++#endif
+ drop_noovpn:
+ 	kfree_skb(skb);
+ 	return 0;
+@@ -251,8 +257,14 @@ static int ovpn_udp6_output(struct ovpn_peer *peer, struct ovpn_bind *bind,
+ 		dst_cache_reset(cache);
+ 	}
+ 
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0) || RHEL_RELEASE_CODE != 0
+ 	dst = ipv6_stub->ipv6_dst_lookup_flow(sock_net(sk), sk, &fl, NULL);
+ 	if (IS_ERR(dst)) {
++#else
++	int err;
++	err = ipv6_stub->ipv6_dst_lookup(sock_net(sk), NULL, &dst, &fl);
++	if (err || IS_ERR(dst)) {
++#endif
+ 		ret = PTR_ERR(dst);
+ 		net_dbg_ratelimited("%s: no route to host %pISpc: %d\n",
+ 				    netdev_name(peer->ovpn->dev),

@@ -23,23 +23,35 @@ fi
 ESC_MOD_SOURCES_DIR="${MOD_SOURCES_DIR//\//\\\/}"
 ESC_MOD_TESTS_DIR="${MOD_TESTS_DIR//\//\\\/}"
 
-rm -f temp.patch
+rm -f compat-patches/sources/*.patch
+rm -f compat-patches/tests/*.patch
 
 # handle the source files
 for filepath in "$ORIG_SOURCES_DIR"/*; do
     base=$(basename "$filepath")
+    out="compat-patches/sources/${base}.patch"
     if [ -f "$MOD_SOURCES_DIR/$base" ]; then
-        git diff --no-index "$filepath" "$MOD_SOURCES_DIR/$base" >> temp.patch
+        git diff --no-index "$filepath" "$MOD_SOURCES_DIR/$base" > "$out"
+        # if the patch is empty, remove it
+        if [ ! -s "$out" ]; then
+            rm -f "$out"
+            continue
+        fi
+        sed -i "s/$ESC_ORIG_SOURCES_DIR/$ESC_MOD_SOURCES_DIR/" "$out"
     fi
 done
 
 # handle the test files
 for filepath in "$ORIG_TESTS_DIR"/*; do
     base=$(basename "$filepath")
+    out="compat-patches/tests/${base}.patch"
     if [ -f "$MOD_TESTS_DIR/$base" ]; then
-        git diff --no-index "$filepath" "$MOD_TESTS_DIR/$base" >> temp.patch
+        git diff --no-index "$filepath" "$MOD_TESTS_DIR/$base" > "$out"
+        # if the patch is empty, remove it
+        if [ ! -s "$out" ]; then
+            rm -f "$out"
+            continue
+        fi
+        sed -i "s/$ESC_ORIG_TESTS_DIR/$ESC_MOD_TESTS_DIR/" "$out"
     fi
 done
-
-sed -i "s/$ESC_ORIG_SOURCES_DIR/$ESC_MOD_SOURCES_DIR/" temp.patch
-sed -i "s/$ESC_ORIG_TESTS_DIR/$ESC_MOD_TESTS_DIR/" temp.patch
