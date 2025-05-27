@@ -36,7 +36,7 @@ static inline void ovpn_cleanup_udp_tunnel_sock(struct sock *sk)
 	 * To avoid a double decrease, bail out if SOCK_DEAD
 	 * is set.
 	 */
-	if (sock_flags(sk, SOCK_DEAD))
+	if (sock_flag(sk, SOCK_DEAD))
 		return;
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 7, 0)
