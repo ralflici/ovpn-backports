@@ -24,8 +24,13 @@ get_ovpn() {
 	cp $KERNEL_DIR/include/uapi/linux/ovpn.h $PWD/include/uapi/linux/ovpn.h
     cp -r $KERNEL_DIR/tools/testing/selftests/net/ovpn $PWD/tests/ovpn-cli
 
-	echo "Applying patch"
-	git apply --verbose ovpn.patch
+    for patch in $PWD/compat-patches/sources/*.patch; do
+        git apply --verbose "$patch"
+    done
+
+    for patch in $PWD/compat-patches/tests/*.patch; do
+        git apply --verbose "$patch"
+    done
 
 	echo "Adding MODULE_VERSION"
 	# Name of the repository from where the ovpn sources were extracted.
