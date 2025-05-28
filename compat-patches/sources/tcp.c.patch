@@ -1,0 +1,143 @@
+diff --git a/drivers/net/ovpn/tcp.c b/drivers/net/ovpn/tcp.c
+index 161fbca..869ec7f 100644
+--- a/drivers/net/ovpn/tcp.c
++++ b/drivers/net/ovpn/tcp.c
+@@ -7,7 +7,9 @@
+  */
+ 
+ #include <linux/skbuff.h>
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 9, 0)
+ #include <net/hotdata.h>
++#endif
+ #include <net/inet_common.h>
+ #include <net/ipv6.h>
+ #include <net/tcp.h>
+@@ -129,13 +131,22 @@ static void ovpn_tcp_rcv(struct strparser *strp, struct sk_buff *skb)
+ 	ovpn_recv(peer, skb);
+ 	return;
+ err:
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 14, 0)
+ 	dev_dstats_rx_dropped(peer->ovpn->dev);
++#else
++	dev_core_stats_rx_dropped_inc(peer->ovpn->dev);
++#endif
+ 	kfree_skb(skb);
+ 	ovpn_peer_del(peer, OVPN_DEL_PEER_REASON_TRANSPORT_ERROR);
+ }
+ 
++#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 19, 0)
++static int ovpn_tcp_recvmsg(struct sock *sk, struct msghdr *msg, size_t len,
++			    int _noblock, int flags, int *addr_len)
++#else
+ static int ovpn_tcp_recvmsg(struct sock *sk, struct msghdr *msg, size_t len,
+ 			    int flags, int *addr_len)
++#endif
+ {
+ 	int err = 0, off, copied = 0, ret;
+ 	struct ovpn_socket *sock;
+@@ -151,7 +162,17 @@ static int ovpn_tcp_recvmsg(struct sock *sk, struct msghdr *msg, size_t len,
+ 	peer = sock->peer;
+ 	rcu_read_unlock();
+ 
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 7, 0) || RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(8, 10)
+ 	skb = __skb_recv_datagram(sk, &peer->tcp.user_queue, flags, &off, &err);
++#elif LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0) || RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(8, 0)
++	skb = __skb_recv_datagram(sk, &peer->tcp.user_queue, flags, NULL, &off,
++				  &err);
++#elif LINUX_VERSION_CODE >= KERNEL_VERSION(5, 2, 0)
++	skb = __skb_recv_datagram(sk, flags, NULL, &off, &err);
++#else
++	int peeked = 0;
++	skb = __skb_recv_datagram(sk, flags, NULL, &peeked, &off, &err);
++#endif
+ 	if (!skb) {
+ 		if (err == -EAGAIN && sk->sk_shutdown & RCV_SHUTDOWN) {
+ 			ret = 0;
+@@ -264,7 +285,11 @@ static void ovpn_tcp_send_sock(struct ovpn_peer *peer, struct sock *sk)
+ 
+ 	if (!peer->tcp.out_msg.len) {
+ 		preempt_disable();
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 14, 0)
+ 		dev_dstats_tx_add(peer->ovpn->dev, skb->len);
++#else
++		dev_sw_netstats_tx_add(peer->ovpn->dev, 1, skb->len);
++#endif
+ 		preempt_enable();
+ 	}
+ 
+@@ -296,7 +321,11 @@ static void ovpn_tcp_send_sock_skb(struct ovpn_peer *peer, struct sock *sk,
+ 		ovpn_tcp_send_sock(peer, sk);
+ 
+ 	if (peer->tcp.out_msg.skb) {
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 14, 0)
+ 		dev_dstats_tx_dropped(peer->ovpn->dev);
++#else
++		dev_core_stats_tx_dropped_inc(peer->ovpn->dev);
++#endif
+ 		kfree_skb(skb);
+ 		return;
+ 	}
+@@ -317,8 +346,16 @@ void ovpn_tcp_send_skb(struct ovpn_peer *peer, struct sock *sk,
+ 	spin_lock_nested(&sk->sk_lock.slock, OVPN_TCP_DEPTH_NESTING);
+ 	if (sock_owned_by_user(sk)) {
+ 		if (skb_queue_len(&peer->tcp.out_queue) >=
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 9, 0)
+ 		    READ_ONCE(net_hotdata.max_backlog)) {
++#else
++		    netdev_max_backlog) {
++#endif
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 14, 0)
+ 			dev_dstats_tx_dropped(peer->ovpn->dev);
++#else
++			dev_core_stats_tx_dropped_inc(peer->ovpn->dev);
++#endif
+ 			kfree_skb(skb);
+ 			goto unlock;
+ 		}
+@@ -536,7 +573,9 @@ int ovpn_tcp_socket_attach(struct ovpn_socket *ovpn_sock,
+ 
+ 	/* avoid using task_frag */
+ 	ovpn_sock->sk->sk_allocation = GFP_ATOMIC;
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 2, 0) || RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(9, 3)
+ 	ovpn_sock->sk->sk_use_task_frag = false;
++#endif
+ 
+ 	/* enqueue the RX worker */
+ 	strp_check_rcv(&peer->tcp.strp);
+@@ -597,10 +636,36 @@ static void ovpn_tcp_build_protos(struct proto *new_prot,
+ /* Initialize TCP static objects */
+ void __init ovpn_tcp_init(void)
+ {
++#if IS_ENABLED(CONFIG_IPV6) && LINUX_VERSION_CODE < KERNEL_VERSION(5, 8, 0) && RHEL_RELEASE_CODE < RHEL_RELEASE_VERSION(9, 0)
++	struct proto *tcpv6_prot_p, tcpv6_prot;
++#endif
++#if IS_ENABLED(CONFIG_IPV6) && LINUX_VERSION_CODE < KERNEL_VERSION(6, 16, 0)
++	struct proto_ops *inet6_stream_ops_p, inet6_stream_ops;
++#endif
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 5, 0)
++	sendmsg_locked = (sendmsg_locked_t)kallsyms_lookup_name("sendmsg_locked");
++#endif
++
+ 	ovpn_tcp_build_protos(&ovpn_tcp_prot, &ovpn_tcp_ops, &tcp_prot,
+ 			      &inet_stream_ops);
+ 
+ #if IS_ENABLED(CONFIG_IPV6)
++#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 8, 0) && RHEL_RELEASE_CODE < RHEL_RELEASE_VERSION(9, 0)
++	tcpv6_prot_p = (struct proto *)kallsyms_lookup_name("tcpv6_prot");
++	if (!tcpv6_prot_p) {
++		pr_err("tcpv6_prot symbol not found\n");
++		return;
++	}
++	tcpv6_prot = *tcpv6_prot_p;
++#endif
++#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 16, 0)
++	inet6_stream_ops_p = (struct proto_ops *)kallsyms_lookup_name("inet6_stream_ops");
++	if (!inet6_stream_ops_p) {
++		pr_err("inet6_stream_ops symbol not found\n");
++		return;
++	}
++	inet6_stream_ops = *inet6_stream_ops_p;
++#endif
+ 	ovpn_tcp_build_protos(&ovpn_tcp6_prot, &ovpn_tcp6_ops, &tcpv6_prot,
+ 			      &inet6_stream_ops);
+ #endif

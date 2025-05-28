@@ -15,6 +15,18 @@ ifneq ("$(wildcard $(KERNEL_SRC)/include/generated/uapi/linux/suse_version.h)","
 VERSION_INCLUDE = -include linux/suse_version.h
 endif
 
+# extract values from .version and construct the module version string
+ifneq ("$(wildcard $(PWD)/.version)","")
+    tree             := $(shell . $(PWD)/.version && echo $$tree)
+    branch           := $(shell . $(PWD)/.version && echo $$branch)
+    kernel_version   := $(shell . $(PWD)/.version && echo $$kernel_version)
+    backports_commit := $(shell . $(PWD)/.version && echo $$backports_commit)
+    version_str      := $(tree)/$(branch)-$(kernel_version)-$(backports_commit)
+    CFLAGS           += -DOVPN_MODULE_VERSION=\"$(version_str)\"
+else
+    $(warning '.version' file not found — have you run 'backports-ctl.sh get-ovpn'?)
+endif
+
 NOSTDINC_FLAGS += \
 	-I$(PWD)/compat-include/ \
 	-I$(PWD)/include/ \

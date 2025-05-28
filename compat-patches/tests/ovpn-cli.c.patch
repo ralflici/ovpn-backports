@@ -1,0 +1,32 @@
+diff --git a/tests/ovpn-cli/ovpn-cli.c b/tests/ovpn-cli/ovpn-cli.c
+index 9201f29..1489926 100644
+--- a/tests/ovpn-cli/ovpn-cli.c
++++ b/tests/ovpn-cli/ovpn-cli.c
+@@ -17,6 +17,7 @@
+ #include <netinet/in.h>
+ #include <time.h>
+ 
++#include <ovpn-cli.h>
+ #include <linux/ovpn.h>
+ #include <linux/types.h>
+ #include <linux/netlink.h>
+@@ -278,15 +279,19 @@ static int ovpn_nl_cb_error(struct sockaddr_nl (*nla)__always_unused,
+ 			(char *)nla_data(tb_msg[NLMSGERR_ATTR_MSG]));
+ 	}
+ 
++#ifdef NLMSGERR_ATTR_MISS_NEST
+ 	if (tb_msg[NLMSGERR_ATTR_MISS_NEST]) {
+ 		fprintf(stderr, "missing required nesting type %u\n",
+ 			nla_get_u32(tb_msg[NLMSGERR_ATTR_MISS_NEST]));
+ 	}
++#endif
+ 
++#ifdef NLMSGERR_ATTR_MISS_TYPE
+ 	if (tb_msg[NLMSGERR_ATTR_MISS_TYPE]) {
+ 		fprintf(stderr, "missing required attribute type %u\n",
+ 			nla_get_u32(tb_msg[NLMSGERR_ATTR_MISS_TYPE]));
+ 	}
++#endif
+ 
+ 	return NL_STOP;
+ }

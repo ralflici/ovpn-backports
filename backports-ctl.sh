@@ -3,7 +3,7 @@
 set -e
 
 KERNEL_REPO_URL='https://github.com/OpenVPN/ovpn-net-next.git'
-KERNEL_COMMIT=${KERNEL_COMMIT:-'545e4c173cf94b4e5bbfe8ee09de2fbe556bb75a'}
+KERNEL_COMMIT=${KERNEL_COMMIT:-'2684558757cdb9dfc8b08ada413cda42efc5933e'}
 KERNEL_DIR="$PWD/kernel"
 
 get_ovpn() {
@@ -24,10 +24,15 @@ get_ovpn() {
 	cp $KERNEL_DIR/include/uapi/linux/ovpn.h $PWD/include/uapi/linux/ovpn.h
     cp -r $KERNEL_DIR/tools/testing/selftests/net/ovpn $PWD/tests/ovpn-cli
 
-	echo "Applying patch"
-	git apply --verbose ovpn.patch
+    for patch in $PWD/compat-patches/sources/*.patch; do
+        git apply --verbose "$patch"
+    done
 
-	echo "Adding MODULE_VERSION"
+    for patch in $PWD/compat-patches/tests/*.patch; do
+        git apply --verbose "$patch"
+    done
+
+	echo "Setting version information"
 	# Name of the repository from where the ovpn sources were extracted.
 	tree=$(basename $(git -C $KERNEL_DIR config --get remote.origin.url) | cut -d. -f1)
 
@@ -44,12 +49,7 @@ get_ovpn() {
 	# generating the backports.
 	backports_commit=$(git rev-parse --short HEAD)
 
-	sed -i '/^MODULE_VERSION(/d' $PWD/drivers/net/ovpn/main.c
-	version_string="$tree/$branch-$kernel_version-$backports_commit"
-	module_version="MODULE_VERSION(\"$version_string\");"
-	echo "$module_version" >> $PWD/drivers/net/ovpn/main.c
-
-	# Save details used for tag creation to a file (as key=value pairs)
+	# Save version information to a file (as key=value pairs)
 	cat << EOF > "$PWD/.version"
 tree=${tree}
 branch=${branch}
