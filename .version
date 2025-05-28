@@ -1,4 +1,4 @@
 tree=ovpn-net-next
 branch=sources
 kernel_version=6.15.0-rc5
-backports_commit=8b18aad
+backports_commit=b5f6665
