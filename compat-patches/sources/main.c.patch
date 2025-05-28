@@ -1,5 +1,5 @@
 diff --git a/drivers/net/ovpn/main.c b/drivers/net/ovpn/main.c
-index 1bb1afe..8f3ed94 100644
+index 1bb1afe..8925c9a 100644
 --- a/drivers/net/ovpn/main.c
 +++ b/drivers/net/ovpn/main.c
 @@ -85,6 +85,12 @@ static int ovpn_net_init(struct net_device *dev)
@@ -122,3 +122,8 @@ index 1bb1afe..8f3ed94 100644
  	.maxtype = IFLA_OVPN_MAX,
  	.newlink = ovpn_newlink,
  	.dellink = ovpn_dellink,
+@@ -277,3 +334,4 @@ module_exit(ovpn_cleanup);
+ MODULE_DESCRIPTION("OpenVPN data channel offload (ovpn)");
+ MODULE_AUTHOR("Antonio Quartulli <antonio@openvpn.net>");
+ MODULE_LICENSE("GPL");
++MODULE_VERSION(OVPN_MODULE_VERSION);

@@ -32,7 +32,7 @@ get_ovpn() {
         git apply --verbose "$patch"
     done
 
-	echo "Adding MODULE_VERSION"
+	echo "Setting version information"
 	# Name of the repository from where the ovpn sources were extracted.
 	tree=$(basename $(git -C $KERNEL_DIR config --get remote.origin.url) | cut -d. -f1)
 
@@ -49,12 +49,7 @@ get_ovpn() {
 	# generating the backports.
 	backports_commit=$(git rev-parse --short HEAD)
 
-	sed -i '/^MODULE_VERSION(/d' $PWD/drivers/net/ovpn/main.c
-	version_string="$tree/$branch-$kernel_version-$backports_commit"
-	module_version="MODULE_VERSION(\"$version_string\");"
-	echo "$module_version" >> $PWD/drivers/net/ovpn/main.c
-
-	# Save details used for tag creation to a file (as key=value pairs)
+	# Save version information to a file (as key=value pairs)
 	cat << EOF > "$PWD/.version"
 tree=${tree}
 branch=${branch}
