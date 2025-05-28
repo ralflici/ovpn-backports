@@ -1,4 +1,25 @@
 #!/bin/bash
+#
+# This script automates the creation of compatibility patch files by comparing
+# original kernel files with modified versions. It separates the patches into
+# two categories:
+# - source Patches: for the actual source code files
+# - test Patches: for the selftests files
+#
+# Default directories:
+#   - original sources: kernel/drivers/net/ovpn
+#   - original tests:   kernel/tools/testing/selftests/net/ovpn
+#   - modified sources: drivers/net/ovpn
+#   - modified tests:   tests/ovpn-cli
+#
+# Usage:
+#   Ensure that the modified source and test files exist in drivers/net/ovpn
+#   and tests/ovpn-cli respectively relative to your repository root. Then
+#   override ORIG_SOURCES_DIR and ORIG_TESTS_DIR if needed and run the
+#   script.
+#   It creates patch files in compat-patches/sources and compat-patches/tests
+#   using 'git diff --no-index' (empty patches are removed) and substitutes
+#   original paths with modified ones.
 
 ORIG_SOURCES_DIR=${ORIG_SOURCES_DIR:-kernel/drivers/net/ovpn}
 ORIG_TESTS_DIR=${ORIG_TESTS_DIR:-kernel/tools/testing/selftests/net/ovpn}
@@ -23,14 +44,19 @@ fi
 ESC_MOD_SOURCES_DIR="${MOD_SOURCES_DIR//\//\\\/}"
 ESC_MOD_TESTS_DIR="${MOD_TESTS_DIR//\//\\\/}"
 
+# remove old patches
 rm -f compat-patches/sources/*.patch
 rm -f compat-patches/tests/*.patch
+
+# create the directories if they don't exist
+mkdir -p compat-patches/sources
+mkdir -p compat-patches/tests
 
 # handle the source files
 for filepath in "$ORIG_SOURCES_DIR"/*; do
     base=$(basename "$filepath")
     out="compat-patches/sources/${base}.patch"
-    if [ -f "$MOD_SOURCES_DIR/$base" ]; then
+    if [[ -f "$filepath" && -f "$MOD_SOURCES_DIR/$base" ]]; then
         git diff --no-index "$filepath" "$MOD_SOURCES_DIR/$base" > "$out"
         # if the patch is empty, remove it
         if [ ! -s "$out" ]; then
@@ -45,7 +71,7 @@ done
 for filepath in "$ORIG_TESTS_DIR"/*; do
     base=$(basename "$filepath")
     out="compat-patches/tests/${base}.patch"
-    if [ -f "$MOD_TESTS_DIR/$base" ]; then
+    if [[ -f "$filepath" && -f "$MOD_TESTS_DIR/$base" ]]; then
         git diff --no-index "$filepath" "$MOD_TESTS_DIR/$base" > "$out"
         # if the patch is empty, remove it
         if [ ! -s "$out" ]; then
