@@ -66,11 +66,11 @@ do_frag_list:
 		kv.iov_base = skb->data + offset;
 		kv.iov_len = slen;
 		memset(&msg, 0, sizeof(msg));
+		msg.msg_flags = MSG_DONTWAIT | flags;
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(6, 5, 0)
 		ret = kernel_sendmsg_locked(sk, &msg, &kv, 1, slen);
 #else /* LINUX_VERSION_CODE >= KERNEL_VERSION (6, 5, 0) */
-		msg.msg_flags = MSG_DONTWAIT | flags;
 		iov_iter_kvec(&msg.msg_iter, ITER_SOURCE, &kv, 1, slen);
 		ret = sendmsg_locked(sk, &msg);
 #endif /* LINUX_VERSION_CODE < KERNEL_VERSION(6, 5, 0) */
