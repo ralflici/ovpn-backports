@@ -126,18 +126,20 @@ static void ovpn_tcp_rcv(struct strparser *strp, struct sk_buff *skb)
 	 * this peer, therefore ovpn_peer_hold() is not expected to fail
 	 */
 	if (WARN_ON(!ovpn_peer_hold(peer)))
-		goto err;
+		goto err_nopeer;
 
 	ovpn_recv(peer, skb);
 	return;
 err:
+	ovpn_peer_hold(peer);
+	schedule_work(&peer->tcp.defer_del_work);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 14, 0)
 	dev_dstats_rx_dropped(peer->ovpn->dev);
 #else
 	dev_core_stats_rx_dropped_inc(peer->ovpn->dev);
 #endif
+err_nopeer:
 	kfree_skb(skb);
-	ovpn_peer_del(peer, OVPN_DEL_PEER_REASON_TRANSPORT_ERROR);
 }
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 19, 0)
@@ -470,24 +472,14 @@ static int ovpn_tcp_disconnect(struct sock *sk, int flags)
 static void ovpn_tcp_data_ready(struct sock *sk)
 {
 	struct ovpn_socket *sock;
-	struct ovpn_peer *peer;
 
 	trace_sk_data_ready(sk);
 
 	rcu_read_lock();
 	sock = rcu_dereference_sk_user_data(sk);
-	if (unlikely(!sock || !sock->peer || !ovpn_peer_hold(sock->peer))) {
-		rcu_read_unlock();
-		return;
-	}
-	peer = sock->peer;
+	if (likely(sock && sock->peer))
+		strp_data_ready(&sock->peer->tcp.strp);
 	rcu_read_unlock();
-
-	/* invoke strp_data_ready() outside of the RCU locked area because
-	 * it may sleep in case of TCP errors (due to calling ovpn_peer_del())
-	 */
-	strp_data_ready(&peer->tcp.strp);
-	ovpn_peer_put(peer);
 }
 
 static void ovpn_tcp_write_space(struct sock *sk)
