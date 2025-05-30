@@ -32,6 +32,12 @@ get_ovpn() {
 		git apply --verbose "$patch"
 	done
 
+	# We extract this from backports all the non-sources branches of this repo
+	# point directly to the corresponding branch in ovpn-net-next and there's
+	# no way of getting this info from ovpn-net-next since it has been cloned
+	# with --depth 1.
+	branch=$(git rev-parse --abbrev-ref HEAD)
+
 	# Save version information to a file (as key=value pairs) unless we're in a
 	# sources branch.
 	if [[ $branch != *'sources'* ]]; then
@@ -39,12 +45,6 @@ get_ovpn() {
 
 		# Name of the repository from where the ovpn sources were extracted.
 		tree=$(basename $(git -C $KERNEL_DIR config --get remote.origin.url) | cut -d. -f1)
-
-		# 'main' or 'development'. We extract this from backports because both
-		# branches of this repo point directly to the corresponding branch in
-		# ovpn-net-next and there's no way of getting this info from ovpn-net-next
-		# since it has been cloned with --depth 1.
-		branch=$(git rev-parse --abbrev-ref HEAD)
 
 		# Version of the kernel from where the ovpn sources were extracted.
 		kernel_version=$(make -s -C $KERNEL_DIR kernelversion)

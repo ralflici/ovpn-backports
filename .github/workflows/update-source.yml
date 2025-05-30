@@ -59,14 +59,11 @@ jobs:
 
       - name: Commit and Push Changes
         run: |
-          # Retrieve the version variables
-          source ./.version
-          # Override branch otherwise it will contain `sources`
-          branch="${GITHUB_REF#refs/heads/}"
-          sed -i "s/^branch=.*/branch=${branch}/" ./.version
-
           git add -f drivers/net/ovpn include/uapi/linux/ovpn.h tests/ovpn-cli
           git add .
+
+          # Retrieve the version variables
+          source ./.version
 
           # Add a 2 digit monithonically increasing counter to allow multiple
           # tags per day. To do this, we need to find the last tag for the
