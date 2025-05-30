@@ -1,5 +1,5 @@
 diff --git a/drivers/net/ovpn/udp.c b/drivers/net/ovpn/udp.c
-index b4fbeba..bfe5033 100644
+index c99e8d7..afc33e6 100644
 --- a/drivers/net/ovpn/udp.c
 +++ b/drivers/net/ovpn/udp.c
 @@ -14,7 +14,9 @@
