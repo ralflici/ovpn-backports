@@ -11,6 +11,8 @@ on:
     branches:
       - main
       - development
+      - net
+      - development-net
 
 jobs:
   update-sources:
@@ -32,12 +34,15 @@ jobs:
           # Determine the push branch (main or development)
           branch="${GITHUB_REF#refs/heads/}"
 
-          # Set the target branch name based on the push branch.
-          # For pushes on main, we use "sources"; for development, we use "development-sources"
+          # Determine the branch where the sources should be pushed
+          # main -> sources
+          # development -> development-sources
+          # net -> net-sources
+          # development-net -> development-net-sources
           if [ "$branch" = "main" ]; then
             target_branch="sources"
           else
-            target_branch="development-sources"
+            target_branch="${branch}-sources"
           fi
 
           git fetch origin "$target_branch" || true
@@ -84,7 +89,7 @@ jobs:
           if [ "$branch" = "main" ]; then
             target_branch="sources"
           else
-            target_branch="development-sources"
+            target_branch="${branch}-sources"
           fi
 
           git push origin "$target_branch"
