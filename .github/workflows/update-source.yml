@@ -52,6 +52,9 @@ jobs:
           # keep the changes from the main/development branch
           git merge "origin/$branch" --no-commit --no-ff -X theirs
 
+          # Get the .version file from the non-sources branch
+          git checkout "origin/$branch" .version
+
       - name: Generate the new source files
         run: |
           chmod +x ./backports-ctl.sh
