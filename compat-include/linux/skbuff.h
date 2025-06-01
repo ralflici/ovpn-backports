@@ -24,7 +24,8 @@ static inline unsigned int skb_frag_off(const skb_frag_t *frag)
 
 #endif /* LINUX_VERSION_CODE < KERNEL_VERSION(5, 4, 0) && RHEL_RELEASE_CODE < RHEL_RELEASE_VERSION(8, 10) */
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 5, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 5, 0) && \
+	SUSE_PRODUCT_CODE < SUSE_PRODUCT(1, 15, 6, 0)
 
 int kernel_sendmsg_locked(struct sock *sk, struct msghdr *msg, struct kvec *vec,
 			  size_t num, size_t size);
@@ -45,7 +46,8 @@ static inline int ovpn_skb_send_sock_locked_with_flags(struct sock *sk,
 						       int offset, int len,
 						       int flags)
 {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 5, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 5, 0) || \
+	SUSE_PRODUCT_CODE >= SUSE_PRODUCT(1, 15, 6, 0)
 	if (!sendmsg_locked)
 		goto error;
 #endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(6, 5, 0) */
@@ -68,7 +70,8 @@ do_frag_list:
 		memset(&msg, 0, sizeof(msg));
 		msg.msg_flags = MSG_DONTWAIT | flags;
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 5, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 5, 0) && \
+	SUSE_PRODUCT_CODE < SUSE_PRODUCT(1, 15, 6, 0)
 		ret = kernel_sendmsg_locked(sk, &msg, &kv, 1, slen);
 #else /* LINUX_VERSION_CODE >= KERNEL_VERSION (6, 5, 0) */
 		iov_iter_kvec(&msg.msg_iter, ITER_SOURCE, &kv, 1, slen);
@@ -104,7 +107,8 @@ do_frag_list:
 		slen = min_t(size_t, len, skb_frag_size(frag) - offset);
 
 		while (slen) {
-#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 5, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 5, 0) && \
+	SUSE_PRODUCT_CODE < SUSE_PRODUCT(1, 15, 6, 0)
 			ret = kernel_sendpage_locked(
 				sk, skb_frag_page(frag),
 				skb_frag_off(frag) + offset, slen,
