@@ -62,6 +62,11 @@ jobs:
 
       - name: Commit and Push Changes
         run: |
+          # Don't commit changes to this file since it may cause problems when
+          # pushing
+          git restore --staged .github/workflows/update-source.yml || true
+          git restore .github/workflows/update-source.yml || true
+
           git add -f drivers/net/ovpn include/uapi/linux/ovpn.h tests/ovpn-cli
           git add .
 
