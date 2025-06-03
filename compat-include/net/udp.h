@@ -18,6 +18,12 @@
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 12, 0)
 static inline void ovpn_udp_encap_disable(void)
 {
+	struct static_key_false *udpv_encap_needed_key = (struct static_key_false *)kallsyms_lookup_name("udpv_encap_needed_key");
+
+	if (!udpv_encap_needed_key) {
+		pr_err("udpv_encap_needed_key symbol not found\n");
+		return;
+	}
 	static_branch_dec(&udp_encap_needed_key);
 }
 
