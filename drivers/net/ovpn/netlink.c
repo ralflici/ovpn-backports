@@ -613,9 +613,30 @@ int ovpn_nl_peer_set_doit(struct sk_buff *skb, struct genl_info *info)
 	return 0;
 }
 
+static inline int ovpn_nl_socket_netnsid(const struct genl_info *info,
+					 struct net *net,
+					 struct ovpn_socket *sock)
+{
+	int id = -1;
+	if (!info) {
+		if (!net_eq(net, sock_net(sock->sk))) {
+			id = peernet2id_alloc(net,
+					      sock_net(sock->sk),
+					      GFP_ATOMIC);
+		}
+	} else {
+		if (!net_eq(genl_info_net(info), sock_net(sock->sk))) {
+			id = peernet2id_alloc(net,
+					      sock_net(sock->sk),
+					      GFP_ATOMIC);
+		}
+	}
+	return id;
+}
+
 static int ovpn_nl_send_peer_common(struct sk_buff *skb, struct net *net,
-			     const struct genl_info *info, const struct ovpn_peer *peer,
-			     u32 portid, u32 seq, int flags)
+				    const struct genl_info *info, const struct ovpn_peer *peer,
+				    u32 portid, u32 seq, int flags)
 {
 	const struct ovpn_bind *bind;
 	struct ovpn_socket *sock;
@@ -641,18 +662,9 @@ static int ovpn_nl_send_peer_common(struct sk_buff *skb, struct net *net,
 		goto err_unlock;
 	}
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 6, 0) && RHEL_RELEASE_CODE <= RHEL_RELEASE_VERSION(9, 4)
-	if (!net_eq(net, sock_net(sock->sk))) {
-		id = peernet2id_alloc(net,
-#else
-	if (!net_eq(genl_info_net(info), sock_net(sock->sk))) {
-		id = peernet2id_alloc(genl_info_net(info),
-#endif
-				      sock_net(sock->sk),
-				      GFP_ATOMIC);
-		if (nla_put_s32(skb, OVPN_A_PEER_SOCKET_NETNSID, id))
+	id = ovpn_nl_socket_netnsid(info, net, sock);
+	if (id != -1 && nla_put_s32(skb, OVPN_A_PEER_SOCKET_NETNSID, id))
 			goto err_unlock;
-	}
 	local_port = inet_sk(sock->sk)->inet_sport;
 	rcu_read_unlock();
 

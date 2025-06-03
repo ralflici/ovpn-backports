@@ -24,7 +24,7 @@ static inline void ovpn_udp_encap_disable(void)
 		pr_err("udp_encap_needed_key symbol not found\n");
 		return;
 	}
-	static_branch_dec(&udp_encap_needed_key);
+	static_branch_dec(udp_encap_needed_key);
 }
 
 #define udp_encap_disable ovpn_udp_encap_disable
