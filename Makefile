@@ -22,7 +22,7 @@ ifneq ("$(wildcard $(PWD)/.version)","")
     kernel_version   := $(shell . $(PWD)/.version && echo $$kernel_version)
     backports_commit := $(shell . $(PWD)/.version && echo $$backports_commit)
     version_str      := $(tree)/$(branch)-$(kernel_version)-$(backports_commit)
-    CFLAGS           += -DOVPN_MODULE_VERSION=\"$(version_str)\"
+    ccflags-y        += -DOVPN_MODULE_VERSION=\"$(version_str)\"
 else
     $(warning '.version' file not found — have you run 'backports-ctl.sh get-ovpn'?)
 endif
@@ -31,7 +31,7 @@ NOSTDINC_FLAGS += \
 	-I$(PWD)/compat-include/ \
 	-I$(PWD)/include/ \
 	-include $(PWD)/linux-compat.h \
-	$(CFLAGS)
+	$(ccflags-y)
 
 obj-y += drivers/net/ovpn/
 export ovpn
