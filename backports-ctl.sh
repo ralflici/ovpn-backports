@@ -3,7 +3,7 @@
 set -e
 
 KERNEL_REPO_URL='https://github.com/OpenVPN/ovpn-net-next.git'
-KERNEL_COMMIT=${KERNEL_COMMIT:-'2684558757cdb9dfc8b08ada413cda42efc5933e'}
+KERNEL_COMMIT=${KERNEL_COMMIT:-'ab672ca98c1bfc87f4572ff372b25a881843e0e5'}
 KERNEL_DIR="$PWD/kernel"
 
 get_ovpn() {
@@ -18,44 +18,49 @@ get_ovpn() {
 	git -C $KERNEL_DIR reset --hard $KERNEL_COMMIT
 
 	echo "Extracting ovpn source files"
-	rm -fr $PWD/drivers/ $PWD/include/ $PWD/tests/ovpn-cli $PWD/.version
+	rm -fr $PWD/drivers/ $PWD/include/ $PWD/tests/ovpn-cli
 	mkdir -p $PWD/drivers/net $PWD/include/uapi/linux
 	cp -r $KERNEL_DIR/drivers/net/ovpn $PWD/drivers/net/
 	cp $KERNEL_DIR/include/uapi/linux/ovpn.h $PWD/include/uapi/linux/ovpn.h
-    cp -r $KERNEL_DIR/tools/testing/selftests/net/ovpn $PWD/tests/ovpn-cli
+	cp -r $KERNEL_DIR/tools/testing/selftests/net/ovpn $PWD/tests/ovpn-cli
 
-    for patch in $PWD/compat-patches/sources/*.patch; do
-        git apply --verbose "$patch"
-    done
+	for patch in $PWD/compat-patches/sources/*.patch; do
+		git apply --verbose "$patch"
+	done
 
-    for patch in $PWD/compat-patches/tests/*.patch; do
-        git apply --verbose "$patch"
-    done
+	for patch in $PWD/compat-patches/tests/*.patch; do
+		git apply --verbose "$patch"
+	done
 
-	echo "Setting version information"
-	# Name of the repository from where the ovpn sources were extracted.
-	tree=$(basename $(git -C $KERNEL_DIR config --get remote.origin.url) | cut -d. -f1)
-
-	# 'main' or 'development'. We extract this from backports because both
-	# branches of this repo point directly to the corresponding branch in
-	# ovpn-net-next and there's no way of getting this info from ovpn-net-next
-	# since it has been cloned with --depth 1.
+	# We extract this from backports all the non-sources branches of this repo
+	# point directly to the corresponding branch in ovpn-net-next and there's
+	# no way of getting this info from ovpn-net-next since it has been cloned
+	# with --depth 1.
 	branch=$(git rev-parse --abbrev-ref HEAD)
 
-	# Version of the kernel from where the ovpn sources were extracted.
-	kernel_version=$(make -s -C $KERNEL_DIR kernelversion)
+	# Save version information to a file (as key=value pairs) unless we're in a
+	# sources branch.
+	if [[ $branch != *'sources'* ]]; then
+		echo "Setting version information"
 
-	# This indirectly indicates also the ovpn-net-next commit used for
-	# generating the backports.
-	backports_commit=$(git rev-parse --short HEAD)
+		# Name of the repository from where the ovpn sources were extracted.
+		tree=$(basename $(git -C $KERNEL_DIR config --get remote.origin.url) | cut -d. -f1)
 
-	# Save version information to a file (as key=value pairs)
-	cat << EOF > "$PWD/.version"
+		# Version of the kernel from where the ovpn sources were extracted.
+		kernel_version=$(make -s -C $KERNEL_DIR kernelversion)
+
+		# This indirectly indicates also the ovpn-net-next commit used for
+		# generating the backports.
+		backports_commit=$(git rev-parse --short HEAD)
+
+		rm -f "$PWD/.version"
+		cat << EOF > "$PWD/.version"
 tree=${tree}
 branch=${branch}
 kernel_version=${kernel_version}
 backports_commit=${backports_commit}
 EOF
+	fi
 
 	if [ "$keep" -eq "0" ] ; then
 		echo "Cleaning up"

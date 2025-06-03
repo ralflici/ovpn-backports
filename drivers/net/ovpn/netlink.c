@@ -94,7 +94,9 @@ int ovpn_nl_pre_doit(const struct genl_split_ops *ops, struct sk_buff *skb,
 	return 0;
 }
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 6, 0) && RHEL_RELEASE_CODE <= RHEL_RELEASE_VERSION(9, 4)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 6, 0) && \
+	RHEL_RELEASE_CODE <= RHEL_RELEASE_VERSION(9, 4) && \
+	SUSE_PRODUCT_CODE < SUSE_PRODUCT(1, 15, 6, 0)
 static struct ovpn_priv *
 ovpn_get_dev_from_attrs_cb(struct net *net, struct netlink_callback *cb,
 			netdevice_tracker *tracker)
@@ -611,9 +613,30 @@ int ovpn_nl_peer_set_doit(struct sk_buff *skb, struct genl_info *info)
 	return 0;
 }
 
+static inline int ovpn_nl_socket_netnsid(const struct genl_info *info,
+					 struct net *net,
+					 struct ovpn_socket *sock)
+{
+	int id = -1;
+	if (!info) {
+		if (!net_eq(net, sock_net(sock->sk))) {
+			id = peernet2id_alloc(net,
+					      sock_net(sock->sk),
+					      GFP_ATOMIC);
+		}
+	} else {
+		if (!net_eq(genl_info_net(info), sock_net(sock->sk))) {
+			id = peernet2id_alloc(net,
+					      sock_net(sock->sk),
+					      GFP_ATOMIC);
+		}
+	}
+	return id;
+}
+
 static int ovpn_nl_send_peer_common(struct sk_buff *skb, struct net *net,
-			     const struct genl_info *info, const struct ovpn_peer *peer,
-			     u32 portid, u32 seq, int flags)
+				    const struct genl_info *info, const struct ovpn_peer *peer,
+				    u32 portid, u32 seq, int flags)
 {
 	const struct ovpn_bind *bind;
 	struct ovpn_socket *sock;
@@ -639,18 +662,9 @@ static int ovpn_nl_send_peer_common(struct sk_buff *skb, struct net *net,
 		goto err_unlock;
 	}
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 6, 0) && RHEL_RELEASE_CODE <= RHEL_RELEASE_VERSION(9, 4)
-	if (!net_eq(net, sock_net(sock->sk))) {
-		id = peernet2id_alloc(net,
-#else
-	if (!net_eq(genl_info_net(info), sock_net(sock->sk))) {
-		id = peernet2id_alloc(genl_info_net(info),
-#endif
-				      sock_net(sock->sk),
-				      GFP_ATOMIC);
-		if (nla_put_s32(skb, OVPN_A_PEER_SOCKET_NETNSID, id))
+	id = ovpn_nl_socket_netnsid(info, net, sock);
+	if (id != -1 && nla_put_s32(skb, OVPN_A_PEER_SOCKET_NETNSID, id))
 			goto err_unlock;
-	}
 	local_port = inet_sk(sock->sk)->inet_sport;
 	rcu_read_unlock();
 
@@ -732,7 +746,9 @@ err:
 	return ret;
 }
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 6, 0) && RHEL_RELEASE_CODE <= RHEL_RELEASE_VERSION(9, 4)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 6, 0) && \
+	RHEL_RELEASE_CODE <= RHEL_RELEASE_VERSION(9, 4) && \
+	SUSE_PRODUCT_CODE < SUSE_PRODUCT(1, 15, 6, 0)
 static int ovpn_nl_send_peer_net(struct sk_buff *skb, struct net *net,
 			     const struct ovpn_peer *peer, u32 portid, u32 seq,
 			     int flags)
@@ -797,20 +813,24 @@ err:
 
 int ovpn_nl_peer_get_dumpit(struct sk_buff *skb, struct netlink_callback *cb)
 {
-#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 6, 0) && RHEL_RELEASE_CODE <= RHEL_RELEASE_VERSION(9, 4)
-	struct net *net = sock_net(skb->sk);
-#else
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0) || \
+	RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(9, 5) || \
+	SUSE_PRODUCT_CODE >= SUSE_PRODUCT(1, 15, 6, 0)
 	const struct genl_info *info = genl_info_dump(cb);
+#else
+	struct net *net = sock_net(skb->sk);
 #endif
 	int bkt, last_idx = cb->args[1], dumped = 0;
 	netdevice_tracker tracker;
 	struct ovpn_priv *ovpn;
 	struct ovpn_peer *peer;
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 6, 0) && RHEL_RELEASE_CODE <= RHEL_RELEASE_VERSION(9, 4)
-	ovpn = ovpn_get_dev_from_attrs_cb(sock_net(cb->skb->sk), cb, &tracker);
-#else
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0) || \
+	RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(9, 5) || \
+	SUSE_PRODUCT_CODE >= SUSE_PRODUCT(1, 15, 6, 0)
 	ovpn = ovpn_get_dev_from_attrs(sock_net(cb->skb->sk), info, &tracker);
+#else
+	ovpn = ovpn_get_dev_from_attrs_cb(sock_net(cb->skb->sk), cb, &tracker);
 #endif
 	if (IS_ERR(ovpn))
 		return PTR_ERR(ovpn);
@@ -823,13 +843,15 @@ int ovpn_nl_peer_get_dumpit(struct sk_buff *skb, struct netlink_callback *cb)
 		rcu_read_lock();
 		peer = rcu_dereference(ovpn->peer);
 		if (peer) {
-#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 6, 0) && RHEL_RELEASE_CODE <= RHEL_RELEASE_VERSION(9, 4)
-			if (ovpn_nl_send_peer_net(skb, net, peer,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0) || \
+	RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(9, 5) || \
+	SUSE_PRODUCT_CODE >= SUSE_PRODUCT(1, 15, 6, 0)
+			if (ovpn_nl_send_peer(skb, info, peer,
 					      NETLINK_CB(cb->skb).portid,
 					      cb->nlh->nlmsg_seq,
 					      NLM_F_MULTI) == 0)
 #else
-			if (ovpn_nl_send_peer(skb, info, peer,
+			if (ovpn_nl_send_peer_net(skb, net, peer,
 					      NETLINK_CB(cb->skb).portid,
 					      cb->nlh->nlmsg_seq,
 					      NLM_F_MULTI) == 0)
@@ -849,13 +871,15 @@ int ovpn_nl_peer_get_dumpit(struct sk_buff *skb, struct netlink_callback *cb)
 				continue;
 			}
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 6, 0) && RHEL_RELEASE_CODE <= RHEL_RELEASE_VERSION(9, 4)
-			if (ovpn_nl_send_peer_net(skb, net, peer,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0) || \
+	RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(9, 5) || \
+	SUSE_PRODUCT_CODE >= SUSE_PRODUCT(1, 15, 6, 0)
+			if (ovpn_nl_send_peer(skb, info, peer,
 					      NETLINK_CB(cb->skb).portid,
 					      cb->nlh->nlmsg_seq,
 					      NLM_F_MULTI) < 0)
 #else
-			if (ovpn_nl_send_peer(skb, info, peer,
+			if (ovpn_nl_send_peer_net(skb, net, peer,
 					      NETLINK_CB(cb->skb).portid,
 					      cb->nlh->nlmsg_seq,
 					      NLM_F_MULTI) < 0)
