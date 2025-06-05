@@ -447,13 +447,19 @@ void ovpn_udp_socket_detach(struct ovpn_socket *ovpn_sock)
 	struct sock *sk = ovpn_sock->sk;
 
 	/* Re-enable multicast loopback */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0)
 	inet_set_bit(MC_LOOP, sk);
+#else
+	inet_sk(sk)->mc_loop = 1;
+#endif
 	/* Disable CHECKSUM_UNNECESSARY to CHECKSUM_COMPLETE conversion */
 	inet_dec_convert_csum(sk);
 
-	udp_sk(sk)->encap_type = 0;
-	udp_sk(sk)->encap_rcv = NULL;
-	udp_sk(sk)->encap_destroy = NULL;
+	WRITE_ONCE(udp_sk(sk)->encap_type, 0);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0)
+	udp_sk(sk)->encap_err_rcv = NULL;
+#endif
+	WRITE_ONCE(udp_sk(sk)->encap_destroy, NULL);
 
 	rcu_assign_sk_user_data(sk, NULL);
 }

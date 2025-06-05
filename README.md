@@ -1,6 +1,6 @@
 # Out-of-tree backports for the ovpn kernel module
 
-The ovpn kernel module is part of the Linux kernel starting from version 6.15. It enhances OpenVPN performance by offloading data channel management to the kernel. This repository contains out-of-tree backports for the ovpn kernel module, enabling its use with older kernel versions.
+The ovpn kernel module is part of the Linux kernel starting from version 6.16. It enhances OpenVPN performance by offloading data channel management to the kernel. This repository contains out-of-tree backports for the ovpn kernel module, enabling its use with older kernel versions.
 
 ## Installation
 
@@ -77,5 +77,6 @@ The module should successfully load and run kernel selftests on the following di
  - Debian 12.10
  - Debian 11.6
  - RHEL 10.0
- - RHEL 9.0 - 9.5
+ - RHEL 9.0 - 9.6
  - RHEL 8.10
+ - openSUSE Tumbleweed/Slowroll

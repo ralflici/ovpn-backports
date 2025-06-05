@@ -636,8 +636,13 @@ void __init ovpn_tcp_init(void)
 #if IS_ENABLED(CONFIG_IPV6) && LINUX_VERSION_CODE < KERNEL_VERSION(6, 16, 0)
 	struct proto_ops *inet6_stream_ops_p, inet6_stream_ops;
 #endif
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 5, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 5, 0) || \
+	SUSE_PRODUCT_CODE >= SUSE_PRODUCT(1, 15, 6, 0)
 	sendmsg_locked = (sendmsg_locked_t)kallsyms_lookup_name("sendmsg_locked");
+	if (!sendmsg_locked) {
+		pr_err("sendmsg_locked symbol not found\n");
+		return;
+	}
 #endif
 
 	ovpn_tcp_build_protos(&ovpn_tcp_prot, &ovpn_tcp_ops, &tcp_prot,
