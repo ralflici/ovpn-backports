@@ -578,7 +578,7 @@ int ovpn_nl_peer_set_doit(struct sk_buff *skb, struct genl_info *info)
 	/* when using a TCP socket the remote IP is not expected */
 	rcu_read_lock();
 	sock = rcu_dereference(peer->sock);
-	if (sock && sock->sock->sk->sk_protocol == IPPROTO_TCP &&
+	if (sock && sock->sk->sk_protocol == IPPROTO_TCP &&
 	    (attrs[OVPN_A_PEER_REMOTE_IPV4] ||
 	     attrs[OVPN_A_PEER_REMOTE_IPV6])) {
 		rcu_read_unlock();
@@ -608,9 +608,30 @@ int ovpn_nl_peer_set_doit(struct sk_buff *skb, struct genl_info *info)
 	return 0;
 }
 
-static int ovpn_nl_send_peer(struct sk_buff *skb, const struct genl_info *info,
-			     const struct ovpn_peer *peer, u32 portid, u32 seq,
-			     int flags)
+static inline int ovpn_nl_socket_netnsid(const struct genl_info *info,
+					 struct net *net,
+					 struct ovpn_socket *sock)
+{
+	int id = -1;
+	if (!info) {
+		if (!net_eq(net, sock_net(sock->sk))) {
+			id = peernet2id_alloc(net,
+					      sock_net(sock->sk),
+					      GFP_ATOMIC);
+		}
+	} else {
+		if (!net_eq(genl_info_net(info), sock_net(sock->sk))) {
+			id = peernet2id_alloc(net,
+					      sock_net(sock->sk),
+					      GFP_ATOMIC);
+		}
+	}
+	return id;
+}
+
+static int ovpn_nl_send_peer_common(struct sk_buff *skb, struct net *net,
+				    const struct genl_info *info, const struct ovpn_peer *peer,
+				    u32 portid, u32 seq, int flags)
 {
 	const struct ovpn_bind *bind;
 	struct ovpn_socket *sock;
@@ -636,14 +657,10 @@ static int ovpn_nl_send_peer(struct sk_buff *skb, const struct genl_info *info,
 		goto err_unlock;
 	}
 
-	if (!net_eq(genl_info_net(info), sock_net(sock->sock->sk))) {
-		id = peernet2id_alloc(genl_info_net(info),
-				      sock_net(sock->sock->sk),
-				      GFP_ATOMIC);
-		if (nla_put_s32(skb, OVPN_A_PEER_SOCKET_NETNSID, id))
+	id = ovpn_nl_socket_netnsid(info, net, sock);
+	if (id != -1 && nla_put_s32(skb, OVPN_A_PEER_SOCKET_NETNSID, id))
 			goto err_unlock;
-	}
-	local_port = inet_sk(sock->sock->sk)->inet_sport;
+	local_port = inet_sk(sock->sk)->inet_sport;
 	rcu_read_unlock();
 
 	if (nla_put_u32(skb, OVPN_A_PEER_ID, peer->id))
@@ -731,118 +748,15 @@ static int ovpn_nl_send_peer_net(struct sk_buff *skb, struct net *net,
 			     const struct ovpn_peer *peer, u32 portid, u32 seq,
 			     int flags)
 {
-	const struct ovpn_bind *bind;
-	struct ovpn_socket *sock;
-	int ret = -EMSGSIZE;
-	struct nlattr *attr;
-	__be16 local_port;
-	void *hdr;
-	int id;
-
-	hdr = genlmsg_put(skb, portid, seq, &ovpn_nl_family, flags,
-			  OVPN_CMD_PEER_GET);
-	if (!hdr)
-		return -ENOBUFS;
-
-	attr = nla_nest_start(skb, OVPN_A_PEER);
-	if (!attr)
-		goto err;
-
-	rcu_read_lock();
-	sock = rcu_dereference(peer->sock);
-	if (!sock) {
-		ret = -EINVAL;
-		goto err_unlock;
-	}
-
-	if (!net_eq(net, sock_net(sock->sock->sk))) {
-		id = peernet2id_alloc(net,
-				      sock_net(sock->sock->sk),
-				      GFP_ATOMIC);
-		if (nla_put_s32(skb, OVPN_A_PEER_SOCKET_NETNSID, id))
-			goto err_unlock;
-	}
-	local_port = inet_sk(sock->sock->sk)->inet_sport;
-	rcu_read_unlock();
-
-	if (nla_put_u32(skb, OVPN_A_PEER_ID, peer->id))
-		goto err;
-
-	if (peer->vpn_addrs.ipv4.s_addr != htonl(INADDR_ANY))
-		if (nla_put_in_addr(skb, OVPN_A_PEER_VPN_IPV4,
-				    peer->vpn_addrs.ipv4.s_addr))
-			goto err;
-
-	if (!ipv6_addr_equal(&peer->vpn_addrs.ipv6, &in6addr_any))
-		if (nla_put_in6_addr(skb, OVPN_A_PEER_VPN_IPV6,
-				     &peer->vpn_addrs.ipv6))
-			goto err;
-
-	if (nla_put_u32(skb, OVPN_A_PEER_KEEPALIVE_INTERVAL,
-			peer->keepalive_interval) ||
-	    nla_put_u32(skb, OVPN_A_PEER_KEEPALIVE_TIMEOUT,
-			peer->keepalive_timeout))
-		goto err;
-
-	rcu_read_lock();
-	bind = rcu_dereference(peer->bind);
-	if (bind) {
-		if (bind->remote.in4.sin_family == AF_INET) {
-			if (nla_put_in_addr(skb, OVPN_A_PEER_REMOTE_IPV4,
-					    bind->remote.in4.sin_addr.s_addr) ||
-			    nla_put_net16(skb, OVPN_A_PEER_REMOTE_PORT,
-					  bind->remote.in4.sin_port) ||
-			    nla_put_in_addr(skb, OVPN_A_PEER_LOCAL_IPV4,
-					    bind->local.ipv4.s_addr))
-				goto err_unlock;
-		} else if (bind->remote.in4.sin_family == AF_INET6) {
-			if (nla_put_in6_addr(skb, OVPN_A_PEER_REMOTE_IPV6,
-					     &bind->remote.in6.sin6_addr) ||
-			    nla_put_u32(skb, OVPN_A_PEER_REMOTE_IPV6_SCOPE_ID,
-					bind->remote.in6.sin6_scope_id) ||
-			    nla_put_net16(skb, OVPN_A_PEER_REMOTE_PORT,
-					  bind->remote.in6.sin6_port) ||
-			    nla_put_in6_addr(skb, OVPN_A_PEER_LOCAL_IPV6,
-					     &bind->local.ipv6))
-				goto err_unlock;
-		}
-	}
-	rcu_read_unlock();
-
-	if (nla_put_net16(skb, OVPN_A_PEER_LOCAL_PORT, local_port) ||
-	    /* VPN RX stats */
-	    nla_put_uint(skb, OVPN_A_PEER_VPN_RX_BYTES,
-			 atomic64_read(&peer->vpn_stats.rx.bytes)) ||
-	    nla_put_uint(skb, OVPN_A_PEER_VPN_RX_PACKETS,
-			 atomic64_read(&peer->vpn_stats.rx.packets)) ||
-	    /* VPN TX stats */
-	    nla_put_uint(skb, OVPN_A_PEER_VPN_TX_BYTES,
-			 atomic64_read(&peer->vpn_stats.tx.bytes)) ||
-	    nla_put_uint(skb, OVPN_A_PEER_VPN_TX_PACKETS,
-			 atomic64_read(&peer->vpn_stats.tx.packets)) ||
-	    /* link RX stats */
-	    nla_put_uint(skb, OVPN_A_PEER_LINK_RX_BYTES,
-			 atomic64_read(&peer->link_stats.rx.bytes)) ||
-	    nla_put_uint(skb, OVPN_A_PEER_LINK_RX_PACKETS,
-			 atomic64_read(&peer->link_stats.rx.packets)) ||
-	    /* link TX stats */
-	    nla_put_uint(skb, OVPN_A_PEER_LINK_TX_BYTES,
-			 atomic64_read(&peer->link_stats.tx.bytes)) ||
-	    nla_put_uint(skb, OVPN_A_PEER_LINK_TX_PACKETS,
-			 atomic64_read(&peer->link_stats.tx.packets)))
-		goto err;
-
-	nla_nest_end(skb, attr);
-	genlmsg_end(skb, hdr);
-
-	return 0;
-err_unlock:
-	rcu_read_unlock();
-err:
-	genlmsg_cancel(skb, hdr);
-	return ret;
+	return ovpn_nl_send_peer_common(skb, net, NULL, peer, portid, seq, flags);
 }
 #endif
+static int ovpn_nl_send_peer(struct sk_buff *skb, const struct genl_info *info,
+			     const struct ovpn_peer *peer, u32 portid, u32 seq,
+			     int flags)
+{
+	return ovpn_nl_send_peer_common(skb, NULL, info, peer, portid, seq, flags);
+}
 
 int ovpn_nl_peer_get_doit(struct sk_buff *skb, struct genl_info *info)
 {
@@ -1380,8 +1294,8 @@ int ovpn_nl_peer_del_notify(struct ovpn_peer *peer)
 		ret = -EINVAL;
 		goto err_unlock;
 	}
-	genlmsg_multicast_netns(&ovpn_nl_family, sock_net(sock->sock->sk),
-				msg, 0, OVPN_NLGRP_PEERS, GFP_ATOMIC);
+	genlmsg_multicast_netns(&ovpn_nl_family, sock_net(sock->sk), msg, 0,
+				OVPN_NLGRP_PEERS, GFP_ATOMIC);
 	rcu_read_unlock();
 
 	return 0;
@@ -1445,8 +1359,8 @@ int ovpn_nl_key_swap_notify(struct ovpn_peer *peer, u8 key_id)
 		ret = -EINVAL;
 		goto err_unlock;
 	}
-	genlmsg_multicast_netns(&ovpn_nl_family, sock_net(sock->sock->sk),
-				msg, 0, OVPN_NLGRP_PEERS, GFP_ATOMIC);
+	genlmsg_multicast_netns(&ovpn_nl_family, sock_net(sock->sk), msg, 0,
+				OVPN_NLGRP_PEERS, GFP_ATOMIC);
 	rcu_read_unlock();
 
 	return 0;
