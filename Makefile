@@ -56,8 +56,8 @@ BUILD_FLAGS := \
 all: check-config
 	$(MAKE) -C $(KERNEL_SRC) $(BUILD_FLAGS) modules
 
-debug: DEBUG=1
-debug: all
+debug:
+	$(MAKE) DEBUG=1 all
 
 check-config:
 	@while read -r flag; do \
@@ -77,8 +77,8 @@ install: all
 	$(MAKE) -C $(KERNEL_SRC) $(BUILD_FLAGS) modules_install
 	$(DEPMOD)
 
-install-debug: DEBUG=1
-install-debug: install
+install-debug:
+	$(MAKE) DEBUG=1 install
 
 ovpn-cli:
 	$(MAKE) -C $(PWD)/tests/ovpn-cli $(BUILD_FLAGS) ovpn-cli
