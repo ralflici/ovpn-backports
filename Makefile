@@ -73,7 +73,7 @@ clean:
 	$(MAKE) -C $(KERNEL_SRC) $(BUILD_FLAGS) clean
 	$(MAKE) -C $(PWD)/tests/ovpn-cli $(BUILD_FLAGS) clean
 
-install: all
+install:
 	$(MAKE) -C $(KERNEL_SRC) $(BUILD_FLAGS) modules_install
 	$(DEPMOD)
 
@@ -83,4 +83,4 @@ install-debug:
 ovpn-cli:
 	$(MAKE) -C $(PWD)/tests/ovpn-cli $(BUILD_FLAGS) ovpn-cli
 
-.PHONY: all check-config debug clean install install-debug ovpn-cli
+.PHONY: all debug check-config clean install ovpn-cli
