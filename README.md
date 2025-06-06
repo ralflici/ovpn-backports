@@ -34,7 +34,7 @@ After downloading and ensuring the kernel headers are installed, simply run `mak
 
 #### Sources branch
 
-Another way to download the pre-patched sources is to clone the repository and check out a branch containing `sources` in the name (see [branch structure](branch-structure)). Then, after ensuring the kernel headers are installed, simply run `make && make install` to build and install the module.
+Another way to download the pre-patched sources is to clone the repository and check out a branch containing `sources` in the name (see [branch structure](#branch-structure)). Then, after ensuring the kernel headers are installed, simply run `make && make install` to build and install the module.
 
 ### Building from source
 
