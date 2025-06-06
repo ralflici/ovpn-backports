@@ -21,6 +21,11 @@ ifneq ("$(wildcard $(KERNEL_SRC)/include/generated/uapi/linux/suse_version.h)","
 VERSION_INCLUDE = -include linux/suse_version.h
 endif
 
+DEBUG ?= 0
+ifeq ($(DEBUG),1)
+    ccflags-y += -g -DDEBUG
+endif
+
 # extract values from .version and construct the module version string
 ifneq ("$(wildcard $(PWD)/.version)","")
     tree             := $(shell . $(PWD)/.version && echo $$tree)
@@ -51,6 +56,9 @@ BUILD_FLAGS := \
 all: check-config
 	$(MAKE) -C $(KERNEL_SRC) $(BUILD_FLAGS) modules
 
+debug:
+	$(MAKE) DEBUG=1 all
+
 check-config:
 	@while read -r flag; do \
 		if [ -z "$$flag" ] || [ "$${flag#\#}" != "$$flag" ]; then continue; fi; \
@@ -65,12 +73,11 @@ clean:
 	$(MAKE) -C $(KERNEL_SRC) $(BUILD_FLAGS) clean
 	$(MAKE) -C $(PWD)/tests/ovpn-cli $(BUILD_FLAGS) clean
 
-install: all
+install:
 	$(MAKE) -C $(KERNEL_SRC) $(BUILD_FLAGS) modules_install
 	$(DEPMOD)
 
 ovpn-cli:
 	$(MAKE) -C $(PWD)/tests/ovpn-cli $(BUILD_FLAGS) ovpn-cli
 
-.PHONY: all check-config clean install ovpn-cli
-
+.PHONY: all debug check-config clean install ovpn-cli
