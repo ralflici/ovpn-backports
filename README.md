@@ -2,21 +2,39 @@
 
 The ovpn kernel module is part of the Linux kernel starting from version 6.15. It enhances OpenVPN performance by offloading data channel management to the kernel. This repository contains out-of-tree backports for the ovpn kernel module, enabling its use with older kernel versions.
 
+## Branch structure
+
+The repository consists of two main branches:
+- `main`: tracks the latest code from the `net-next` tree.
+- `net`: tracks the latest code from the `net` tree.
+
+Additionally, there are two branches dedicated to development and testing, which may contain code not yet part of any official kernel tree:
+- `development`: code built on top of the `net-next` tree.
+- `development-net`: code built on top of the `net` tree.
+
+Finally, there are four corresponding branches for pre-patched sources:
+- `sources`: pre-patched sources for `main`.
+- `net-sources`: pre-patched sources for `net`.
+- `development-sources`: pre-patched sources for `development`.
+- `development-net-sources`: pre-patched sources for `development-net`.
+
 ## Installation
 
 ### Packages
 
-You can downloaded Debian packages from the [OpenVPN repository](https://download.opensuse.org/repositories/isv:/OpenVPN:/Snapshots/).
+You can download packages from the [OpenVPN OBS repository](https://download.opensuse.org/repositories/isv:/OpenVPN:/Snapshots/).
 
 ### Pre-patched sources
 
 #### Tags
 
-A pre-patched version of the source files is available for download in the [tags](https://github.com/OpenVPN/ovpn-backports/tags) section of this repository. After downloading, you can simply run `make && make install` to build and install the module.
+A pre-patched version of the source files is available for download in the [tags](https://github.com/OpenVPN/ovpn-backports/tags) section of this repository. Generally, you’ll want to download the packages containing either 'main' or 'net' in the name, as these track the 'net-next' and 'net' trees, respectively (see [branch structure](#branch-structure)).
+
+After downloading and ensuring the kernel headers are installed, simply run `make && make install` to build and install the module.
 
 #### Sources branch
 
-Another way of downloading the pre-patched sources is to clone the repository and checkout the `sources` branch (or `development-sources` if you want to track `ovpn-net-next/development`). Then simply run `make && make install` to build and install the module.
+Another way to download the pre-patched sources is to clone the repository and check out a branch containing `sources` in the name (see [branch structure](#branch-structure)). Then, after ensuring the kernel headers are installed, simply run `make && make install` to build and install the module.
 
 ### Building from source
 
@@ -51,9 +69,8 @@ in the root folder. The Makefile will autodetect your running kernel and will tr
 To include debugging symbols in the module, you can run:
 
 ```sh
-make debug
+make debug # or make DEBUG=1
 ```
-
 
 If you want to build ovpn against a kernel different from the one running on the host, run:
 
@@ -64,7 +81,7 @@ make KERNEL_SRC=/path/to/the/kernel/tree
 The control is passed to the kernel Makefile, therefore any kernel Makefile argument can be specified on the command line and it will be passed automatically. Once done building, executing the command:
 
 ```sh
-make install # or make install-debug
+make install
 ```
 
 will install the ovpn.ko kernel module in the updates/ subfolder of the kernel modules directory on your system. It normally means `/lib/modules/$(uname -r)/updates/`.
@@ -78,11 +95,9 @@ This tool is essential for executing selftests and is also useful for debugging.
 
 ### Kernel versions
 
-The module should successfully load and run kernel selftests on the following distributions:
- - Ubuntu 20.04
- - Ubuntu 22.04
- - Debian 12.10
- - Debian 11.6
- - RHEL 10.0
- - RHEL 9.0 - 9.5
- - RHEL 8.10
+The module was compiled and tested on the following distributions:
+ - Ubuntu 20.04, 22.04, 24.04
+ - Debian 11, 12
+ - RHEL 8, 9, 10
+ - openSUSE Tumbleweed/Slowroll
+ - openSUSE SLE 15
