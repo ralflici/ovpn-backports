@@ -48,6 +48,13 @@ make
 
 in the root folder. The Makefile will autodetect your running kernel and will try to use its headers to get the code compiled.
 
+To include debugging symbols in the module, you can run:
+
+```sh
+make debug
+```
+
+
 If you want to build ovpn against a kernel different from the one running on the host, run:
 
 ```sh
@@ -57,7 +64,7 @@ make KERNEL_SRC=/path/to/the/kernel/tree
 The control is passed to the kernel Makefile, therefore any kernel Makefile argument can be specified on the command line and it will be passed automatically. Once done building, executing the command:
 
 ```sh
-make install
+make install # or make install-debug
 ```
 
 will install the ovpn.ko kernel module in the updates/ subfolder of the kernel modules directory on your system. It normally means `/lib/modules/$(uname -r)/updates/`.
