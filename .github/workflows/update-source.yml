@@ -29,7 +29,12 @@ jobs:
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
 
-      - name: Checkout Sources and Merge with Main
+      - name: Generate Sources
+        run: |
+          chmod +x ./backports-ctl.sh
+          ./backports-ctl.sh get-ovpn
+
+      - name: Checkout Target Branch
         run: |
           # Determine the push branch (main or development)
           branch="${GITHUB_REF#refs/heads/}"
@@ -45,20 +50,8 @@ jobs:
             target_branch="${branch}-sources"
           fi
 
-          git fetch origin "$target_branch" || true
-          git checkout -b "$target_branch" "origin/$target_branch" 2>/dev/null || git checkout -b "$target_branch"
-
-          # There should be no merge conflicts, but if there are, we want to
-          # keep the changes from the main/development branch
-          git merge "origin/$branch" --no-commit --no-ff -X theirs
-
-          # Get the .version file from the non-sources branch
-          git checkout "origin/$branch" .version
-
-      - name: Generate the new source files
-        run: |
-          chmod +x ./backports-ctl.sh
-          ./backports-ctl.sh get-ovpn
+          git fetch origin "$target_branch"
+          git reset "origin/$target_branch"
 
       - name: Commit and Push Changes
         run: |
@@ -67,11 +60,15 @@ jobs:
           git restore --staged .github/workflows/update-source.yml || true
           git restore .github/workflows/update-source.yml || true
 
-          git add -f drivers/net/ovpn include/uapi/linux/ovpn.h tests/ovpn-cli
-          git add .
+          # Ensure the .version contains the correct backports commit hash
+          hash=$(echo "$GITHUB_SHA" | cut -c1-7)
+          sed -i "s/backports_commit=.*/backports_commit=$hash/" ./.version
 
           # Retrieve the version variables
           source ./.version
+
+          git add -f drivers/net/ovpn include/uapi/linux/ovpn.h tests/ovpn-cli .version
+          git add .
 
           # Add a 2 digit monithonically increasing counter to allow multiple
           # tags per day. To do this, we need to find the last tag for the
@@ -97,7 +94,7 @@ jobs:
             target_branch="${branch}-sources"
           fi
 
-          git push origin "$target_branch"
+          git push origin HEAD:"$target_branch"
           git push origin --tags --force
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
