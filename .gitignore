@@ -2,6 +2,7 @@
 .tmp_versions/
 .clangd
 .clang-format
+.version
 .Module.symvers.cmd
 .modules.order.cmd
 .module-common.o
