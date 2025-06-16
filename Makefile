@@ -77,9 +77,6 @@ install:
 	$(MAKE) -C $(KERNEL_SRC) $(BUILD_FLAGS) modules_install
 	$(DEPMOD)
 
-install-debug:
-	$(MAKE) DEBUG=1 install
-
 ovpn-cli:
 	$(MAKE) -C $(PWD)/tests/ovpn-cli $(BUILD_FLAGS) ovpn-cli
 
