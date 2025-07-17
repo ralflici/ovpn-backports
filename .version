@@ -1,0 +1,4 @@
+tree=ovpn-net-next
+branch=float-notification
+kernel_version=6.16.0-rc3
+backports_commit=cb06c90
