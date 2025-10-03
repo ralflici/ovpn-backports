@@ -31,16 +31,11 @@
 #define SUSE_PRODUCT(pr, v, pl, aux) 1
 #endif
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 7, 0)
-
 #include <linux/kprobes.h>
 
-typedef unsigned long (*kallsyms_lookup_name_t)(const char *name);
-static kallsyms_lookup_name_t kallsyms_lookup_name_p;
-
-static inline unsigned long get_kallsyms_lookup_name(void)
+static inline unsigned long get_unexported_symbol(const char *name)
 {
-	struct kprobe kp = { .symbol_name = "kallsyms_lookup_name" };
+	struct kprobe kp = { .symbol_name = name };
 	unsigned long addr;
 
 	if (register_kprobe(&kp) < 0)
@@ -51,26 +46,6 @@ static inline unsigned long get_kallsyms_lookup_name(void)
 
 	return addr;
 }
-
-static inline unsigned long ovpn_kallsyms_lookup_name(const char *name)
-{
-	if (!kallsyms_lookup_name_p)
-		kallsyms_lookup_name_p =
-			(kallsyms_lookup_name_t)get_kallsyms_lookup_name();
-
-	if (kallsyms_lookup_name_p)
-		return kallsyms_lookup_name_p(name);
-	else
-		return 0;
-}
-
-#define kallsyms_lookup_name(_name) ovpn_kallsyms_lookup_name((_name))
-
-#else /* LINUX_VERSION_CODE < KERNEL_VERSION(5, 7, 0) */
-
-#include <linux/kallsyms.h>
-
-#endif /* LINUX_VERSION_CODE < KERNEL_VERSION(5, 7, 0) */
 
 #ifndef UDP_ENCAP_OVPNINUDP
 /* Our UDP encapsulation types, must be unique
