@@ -34,6 +34,7 @@
 #define SUSE_PRODUCT(pr, v, pl, aux) 1
 #endif
 
+#include <linux/if_link.h>
 #include <linux/kprobes.h>
 
 static inline unsigned long get_unexported_symbol(const char *name)
@@ -57,7 +58,7 @@ static inline unsigned long get_unexported_symbol(const char *name)
 #define UDP_ENCAP_OVPNINUDP 8 /* transport layer */
 #endif /* UDP_ENCAP_OVPNINUDP */
 
-#if SUSE_PRODUCT_CODE < SUSE_PRODUCT(3, 0, 0, 0)
+#ifndef IFLA_OVPN_MAX
 
 enum ovpn_mode {
 	OVPN_MODE_P2P,
@@ -72,7 +73,7 @@ enum {
 
 #define IFLA_OVPN_MAX (__IFLA_OVPN_MAX - 1)
 
-#endif /* SUSE_PRODUCT_CODE < SUSE_PRODUCT(3, 0, 0, 0) */
+#endif /* IFLA_OVPN_MAX */
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 19, 0)
 
