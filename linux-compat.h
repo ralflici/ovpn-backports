@@ -60,7 +60,8 @@ enum {
 
 #endif /* IFLA_OVPN_MAX */
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 16, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 5, 0) && \
+	LINUX_VERSION_CODE < KERNEL_VERSION(6, 16, 0)
 
 #include <net/sock.h>
 static int ovpn_sendmsg_locked(struct sock *sk, struct msghdr *msg)
@@ -77,7 +78,7 @@ static int ovpn_sendmsg_locked(struct sock *sk, struct msghdr *msg)
 	return sock->ops->sendmsg_locked(sk, msg, size);
 }
 
-#endif /* LINUX_VERSION_CODE < KERNEL_VERSION(6, 16, 0) */
+#endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(6, 5, 0) && LINUX_VERSION_CODE < KERNEL_VERSION(6, 16, 0) */
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 19, 0)
 
@@ -94,13 +95,6 @@ static int ovpn_sendmsg_locked(struct sock *sk, struct msghdr *msg)
 #endif
 
 #endif /* LINUX_VERSION_CODE < KERNEL_VERSION(5, 19, 0) */
-
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 15, 0) && \
-	SUSE_PRODUCT_CODE < SUSE_PRODUCT(1, 15, 5, 0)
-
-#define sock_is_readable stream_memory_read
-
-#endif /* LINUX_VERSION_CODE < KERNEL_VERSION(5, 15, 0) && SUSE_PRODUCT_CODE < SUSE_PRODUCT(1, 15, 5, 0) */
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 11, 0) && \
 	RHEL_RELEASE_CODE < RHEL_RELEASE_VERSION(8, 0)
