@@ -1,5 +1,5 @@
 diff --git a/drivers/net/ovpn/udp.c b/drivers/net/ovpn/udp.c
-index d6a0f7a..3cda0e2 100644
+index d6a0f7a..0ad2164 100644
 --- a/drivers/net/ovpn/udp.c
 +++ b/drivers/net/ovpn/udp.c
 @@ -14,7 +14,9 @@
@@ -12,7 +12,15 @@ index d6a0f7a..3cda0e2 100644
  #include <net/transp_v6.h>
  #include <net/udp.h>
  #include <net/udp_tunnel.h>
-@@ -126,7 +128,11 @@ static int ovpn_udp_encap_recv(struct sock *sk, struct sk_buff *skb)
+@@ -122,11 +124,18 @@ static int ovpn_udp_encap_recv(struct sock *sk, struct sk_buff *skb)
+ 
+ 	/* pop off outer UDP header */
+ 	__skb_pull(skb, sizeof(struct udphdr));
+-	ovpn_recv(peer, skb);
++
++	if (unlikely(!ovpn_enqueue_encap(peer, skb)))
++		goto drop;
++
  	return 0;
  
  drop:
@@ -24,7 +32,7 @@ index d6a0f7a..3cda0e2 100644
  drop_noovpn:
  	kfree_skb(skb);
  	return 0;
-@@ -199,7 +205,11 @@ static int ovpn_udp4_output(struct ovpn_peer *peer, struct ovpn_bind *bind,
+@@ -199,7 +208,11 @@ static int ovpn_udp4_output(struct ovpn_peer *peer, struct ovpn_bind *bind,
  transmit:
  	udp_tunnel_xmit_skb(rt, sk, skb, fl.saddr, fl.daddr, 0,
  			    ip4_dst_hoplimit(&rt->dst), 0, fl.fl4_sport,
@@ -37,7 +45,7 @@ index d6a0f7a..3cda0e2 100644
  	ret = 0;
  err:
  	local_bh_enable();
-@@ -251,8 +261,14 @@ static int ovpn_udp6_output(struct ovpn_peer *peer, struct ovpn_bind *bind,
+@@ -251,8 +264,14 @@ static int ovpn_udp6_output(struct ovpn_peer *peer, struct ovpn_bind *bind,
  		dst_cache_reset(cache);
  	}
  
@@ -52,7 +60,7 @@ index d6a0f7a..3cda0e2 100644
  		ret = PTR_ERR(dst);
  		net_dbg_ratelimited("%s: no route to host %pISpc: %d\n",
  				    netdev_name(peer->ovpn->dev),
-@@ -274,7 +290,11 @@ static int ovpn_udp6_output(struct ovpn_peer *peer, struct ovpn_bind *bind,
+@@ -274,7 +293,11 @@ static int ovpn_udp6_output(struct ovpn_peer *peer, struct ovpn_bind *bind,
  	skb->ignore_df = 1;
  	udp_tunnel6_xmit_skb(dst, sk, skb, skb->dev, &fl.saddr, &fl.daddr, 0,
  			     ip6_dst_hoplimit(dst), 0, fl.fl6_sport,
@@ -65,7 +73,7 @@ index d6a0f7a..3cda0e2 100644
  	ret = 0;
  err:
  	local_bh_enable();
-@@ -436,12 +456,18 @@ void ovpn_udp_socket_detach(struct ovpn_socket *ovpn_sock)
+@@ -436,12 +459,18 @@ void ovpn_udp_socket_detach(struct ovpn_socket *ovpn_sock)
  	struct sock *sk = ovpn_sock->sk;
  
  	/* Re-enable multicast loopback */

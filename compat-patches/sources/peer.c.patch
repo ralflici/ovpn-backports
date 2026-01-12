@@ -1,8 +1,103 @@
 diff --git a/drivers/net/ovpn/peer.c b/drivers/net/ovpn/peer.c
-index 4bfcab0..6bf6d3d 100644
+index 4bfcab0..68124df 100644
 --- a/drivers/net/ovpn/peer.c
 +++ b/drivers/net/ovpn/peer.c
-@@ -410,7 +410,12 @@ static __be32 ovpn_nexthop_from_skb4(struct sk_buff *skb)
+@@ -10,6 +10,7 @@
+ #include <linux/skbuff.h>
+ #include <linux/list.h>
+ #include <linux/hashtable.h>
++#include <net/hotdata.h>
+ #include <net/ip6_route.h>
+ 
+ #include "ovpnpriv.h"
+@@ -82,6 +83,60 @@ static void ovpn_peer_keepalive_send(struct work_struct *work)
+ 	local_bh_enable();
+ }
+ 
++bool ovpn_enqueue_encap(struct ovpn_peer *peer, struct sk_buff *skb)
++{
++	if (skb_queue_len(&peer->rq.queue) >=
++	    READ_ONCE(net_hotdata.max_backlog))
++		return false;
++
++	skb_queue_tail(&peer->rq.queue, skb);
++	napi_schedule(&peer->rq.napi);
++	return true;
++}
++
++static int ovpn_encap_poll(struct napi_struct *napi, int budget)
++{
++	struct ovpn_peer_rq *rq =
++		container_of(napi, struct ovpn_peer_rq, napi);
++	struct ovpn_peer *peer;
++	struct sk_buff *skb;
++	int work = 0;
++
++	peer = container_of(rq, struct ovpn_peer, rq);
++
++	while (work < budget && (skb = skb_dequeue(&rq->queue))) {
++		ovpn_recv(peer, skb);
++		work++;
++	}
++
++	if (work < budget)
++		napi_complete_done(napi, work);
++
++	return work;
++}
++
++static int ovpn_peer_rq_init(struct ovpn_peer_rq *rq, struct net_device *dev)
++{
++	skb_queue_head_init(&rq->queue);
++
++	set_bit(NAPI_STATE_NO_BUSY_POLL, &rq->napi.state);
++	netif_napi_add(dev, &rq->napi, ovpn_encap_poll);
++	napi_enable(&rq->napi);
++
++	return gro_cells_init(&rq->gro_cells, dev);
++	return 0;
++}
++
++static void ovpn_peer_rq_uninit(struct ovpn_peer_rq *rq)
++{
++	gro_cells_destroy(&rq->gro_cells);
++
++	napi_disable(&rq->napi);
++	netif_napi_del(&rq->napi);
++
++	__skb_queue_purge(&rq->queue);
++}
++
+ /**
+  * ovpn_peer_new - allocate and initialize a new peer object
+  * @ovpn: the openvpn instance inside which the peer should be created
+@@ -122,6 +177,17 @@ struct ovpn_peer *ovpn_peer_new(struct ovpn_priv *ovpn, u32 id)
+ 		return ERR_PTR(ret);
+ 	}
+ 
++	ret = ovpn_peer_rq_init(&peer->rq, ovpn->dev);
++	if (ret < 0) {
++		netdev_err(ovpn->dev,
++			   "cannot initialize receive queue for peer %u\n",
++			   peer->id);
++		dst_cache_destroy(&peer->dst_cache);
++		ovpn_peer_rq_uninit(&peer->rq);
++		kfree(peer);
++		return ERR_PTR(ret);
++	}
++
+ 	netdev_hold(ovpn->dev, &peer->dev_tracker, GFP_KERNEL);
+ 
+ 	return peer;
+@@ -350,6 +416,7 @@ static void ovpn_peer_release_rcu(struct rcu_head *head)
+  */
+ void ovpn_peer_release(struct ovpn_peer *peer)
+ {
++	ovpn_peer_rq_uninit(&peer->rq);
+ 	ovpn_crypto_state_release(&peer->crypto);
+ 	spin_lock_bh(&peer->lock);
+ 	ovpn_bind_reset(peer, NULL);
+@@ -410,7 +477,12 @@ static __be32 ovpn_nexthop_from_skb4(struct sk_buff *skb)
  {
  	const struct rtable *rt = skb_rtable(skb);
  
@@ -15,7 +110,7 @@ index 4bfcab0..6bf6d3d 100644
  		return rt->rt_gw4;
  
  	return ip_hdr(skb)->daddr;
-@@ -791,7 +796,12 @@ static __be32 ovpn_nexthop_from_rt4(struct ovpn_priv *ovpn, __be32 dest)
+@@ -791,7 +863,12 @@ static __be32 ovpn_nexthop_from_rt4(struct ovpn_priv *ovpn, __be32 dest)
  		return dest;
  	}
  
@@ -28,7 +123,7 @@ index 4bfcab0..6bf6d3d 100644
  		goto out;
  
  	dest = rt->rt_gw4;
-@@ -821,9 +831,15 @@ static struct in6_addr ovpn_nexthop_from_rt6(struct ovpn_priv *ovpn,
+@@ -821,9 +898,15 @@ static struct in6_addr ovpn_nexthop_from_rt6(struct ovpn_priv *ovpn,
  		.daddr = dest,
  	};
  
