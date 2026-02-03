@@ -7,12 +7,7 @@
 name: Update Sources
 
 on:
-  push:
-    branches:
-      - main
-      - development
-      - net
-      - development-net
+  push
 
 jobs:
   update-sources:
@@ -50,8 +45,8 @@ jobs:
             target_branch="${branch}-sources"
           fi
 
-          git fetch origin "$target_branch"
-          git reset "origin/$target_branch"
+          git fetch origin "$target_branch" || true
+          git reset "origin/$target_branch" || true
 
       - name: Commit and Push Changes
         run: |
