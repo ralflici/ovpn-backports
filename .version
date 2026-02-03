@@ -1,0 +1,4 @@
+tree=ovpn-net-next
+branch=288-unsupported-protocol-tcp
+kernel_version=6.17.0
+backports_commit=5ef6496
