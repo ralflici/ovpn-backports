@@ -81,7 +81,6 @@ static void ovpn_tcp_to_userspace(struct ovpn_peer *peer, struct sock *sk,
 	peer->tcp.sk_cb.sk_data_ready(sk);
 }
 
-/* takes ownership of orig_skb */
 static struct sk_buff *ovpn_tcp_skb_packet(const struct ovpn_peer *peer,
 					   struct sk_buff *orig_skb,
 					   const int pkt_len, const int pkt_off)
@@ -91,24 +90,23 @@ static struct sk_buff *ovpn_tcp_skb_packet(const struct ovpn_peer *peer,
 
 	/* create a new skb with only the content of the current packet */
 	ovpn_skb = netdev_alloc_skb(peer->ovpn->dev, pkt_len);
-	if (!ovpn_skb) {
-		ovpn_skb = orig_skb;
+	if (unlikely(!ovpn_skb))
 		goto err;
-	}
 
 	skb_copy_header(ovpn_skb, orig_skb);
 	err = skb_copy_bits(orig_skb, pkt_off, skb_put(ovpn_skb, pkt_len),
 			    pkt_len);
-	kfree_skb(orig_skb);
-	if (err) {
+	if (unlikely(err)) {
 		net_warn_ratelimited("%s: skb_copy_bits failed for peer %u\n",
 				     netdev_name(peer->ovpn->dev), peer->id);
+		kfree_skb(ovpn_skb);
 		goto err;
 	}
 
+	consume_skb(orig_skb);
 	return ovpn_skb;
 err:
-	kfree_skb(ovpn_skb);
+	kfree_skb(orig_skb);
 	return NULL;
 }
 
@@ -116,39 +114,37 @@ static void ovpn_tcp_rcv(struct strparser *strp, struct sk_buff *skb)
 {
 	struct ovpn_peer *peer = container_of(strp, struct ovpn_peer, tcp.strp);
 	struct strp_msg *msg = strp_msg(skb);
-	struct sk_buff *ovpn_skb = NULL;
+	int pkt_len = msg->full_len - 2;
 	u8 opcode;
 
-	ovpn_skb = ovpn_tcp_skb_packet(peer, skb, msg->full_len - 2,
-				       msg->offset + 2);
-	if (!ovpn_skb)
-		goto err;
-
-	/* we need the first 4 bytes of data to be accessible
+	/* we need at least 4 bytes of data in the packet
 	 * to extract the opcode and the key ID later on
 	 */
-	if (!pskb_may_pull(ovpn_skb, OVPN_OPCODE_SIZE)) {
-		net_warn_ratelimited(
-			"%s: packet too small to fetch opcode for peer %u\n",
-			netdev_name(peer->ovpn->dev), peer->id);
+	if (unlikely(pkt_len < OVPN_OPCODE_SIZE)) {
+		net_warn_ratelimited("%s: packet too small to fetch opcode for peer %u\n",
+				     netdev_name(peer->ovpn->dev), peer->id);
 		goto err;
 	}
 
+	/* extract the packet into a new skb */
+	skb = ovpn_tcp_skb_packet(peer, skb, pkt_len, msg->offset + 2);
+	if (unlikely(!skb))
+		goto err;
+
 	/* DATA_V2 packets are handled in kernel, the rest goes to user space */
-	opcode = ovpn_opcode_from_skb(ovpn_skb, 0);
+	opcode = ovpn_opcode_from_skb(skb, 0);
 	if (unlikely(opcode != OVPN_DATA_V2)) {
 		if (opcode == OVPN_DATA_V1) {
-			net_warn_ratelimited(
-				"%s: DATA_V1 detected on the TCP stream\n",
-				netdev_name(peer->ovpn->dev));
+			net_warn_ratelimited("%s: DATA_V1 detected on the TCP stream\n",
+					     netdev_name(peer->ovpn->dev));
 			goto err;
 		}
 
 		/* The packet size header must be there when sending the packet
 		 * to userspace, therefore we put it back
 		 */
-		put_unaligned_be16(msg->full_len - 2, __skb_push(ovpn_skb, 2));
-		ovpn_tcp_to_userspace(peer, strp->sk, ovpn_skb);
+		*((__force __be16 *)__skb_push(skb, 2)) = cpu_to_be16(pkt_len);
+		ovpn_tcp_to_userspace(peer, strp->sk, skb);
 		return;
 	}
 
@@ -160,7 +156,7 @@ static void ovpn_tcp_rcv(struct strparser *strp, struct sk_buff *skb)
 	if (WARN_ON(!ovpn_peer_hold(peer)))
 		goto err_nopeer;
 
-	ovpn_recv(peer, ovpn_skb);
+	ovpn_recv(peer, skb);
 	return;
 err:
 	/* take reference for deferred peer deletion. should never fail */
@@ -173,7 +169,7 @@ err:
 	dev_core_stats_rx_dropped_inc(peer->ovpn->dev);
 #endif
 err_nopeer:
-	kfree_skb(ovpn_skb);
+	kfree_skb(skb);
 }
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 6, 0) && RHEL_RELEASE_CODE < RHEL_RELEASE_VERSION(8, 0)
