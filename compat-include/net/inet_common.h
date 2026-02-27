@@ -134,6 +134,28 @@ no_packet:
 
 #endif /* LINUX_VERSION_CODE < KERNEL_VERSION(5, 6, 0) && RHEL_RELEASE_CODE < RHEL_RELEASE_VERSION(8, 0) */
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 6, 0) && \
+	RHEL_RELEASE_CODE < RHEL_RELEASE_VERSION(8, 0)
+static inline struct sk_buff *
+ovpn__skb_recv_datagram(struct sock *sk, struct sk_buff_head *sk_queue,
+			unsigned int flags, int *off, int *err);
+#endif
+
+static inline struct sk_buff *
+ovpn_skb_recv_datagram(struct sock *sk, struct sk_buff_head *queue,
+		       unsigned int flags, int *off, int *err)
+{
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 7, 0) || \
+	RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(8, 10)
+	return __skb_recv_datagram(sk, queue, flags, off, err);
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0) || \
+	RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(8, 0)
+	return __skb_recv_datagram(sk, queue, flags, NULL, off, err);
+#else
+	return ovpn__skb_recv_datagram(sk, queue, flags, off, err);
+#endif
+}
+
 #if LINUX_VERSION_CODE < KERNEL_VERSION(6, 17, 6)
 
 static inline int ovpn_connection_based(struct sock *sk)
