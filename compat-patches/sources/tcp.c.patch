@@ -1,18 +1,16 @@
 diff --git a/drivers/net/ovpn/tcp.c b/drivers/net/ovpn/tcp.c
-index 0d7f303..55542c6 100644
+index 0d7f303..59fe382 100644
 --- a/drivers/net/ovpn/tcp.c
 +++ b/drivers/net/ovpn/tcp.c
-@@ -7,7 +7,9 @@
-  */
- 
- #include <linux/skbuff.h>
-+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 9, 0)
+@@ -10,6 +10,7 @@
  #include <net/hotdata.h>
-+#endif
  #include <net/inet_common.h>
  #include <net/ipv6.h>
++#include <net/sock.h>
  #include <net/tcp.h>
-@@ -30,8 +32,14 @@
+ #include <net/transp_v6.h>
+ #include <net/route.h>
+@@ -30,8 +31,14 @@
  
  static struct proto ovpn_tcp_prot __ro_after_init;
  static struct proto_ops ovpn_tcp_ops __ro_after_init;
@@ -27,7 +25,7 @@ index 0d7f303..55542c6 100644
  
  static int ovpn_tcp_parse(struct strparser *strp, struct sk_buff *skb)
  {
-@@ -138,14 +146,23 @@ static void ovpn_tcp_rcv(struct strparser *strp, struct sk_buff *skb)
+@@ -138,14 +145,23 @@ static void ovpn_tcp_rcv(struct strparser *strp, struct sk_buff *skb)
  	kfree_skb(skb);
  }
  
@@ -51,7 +49,7 @@ index 0d7f303..55542c6 100644
  	rcu_read_lock();
  	sock = rcu_dereference_sk_user_data(sk);
  	if (unlikely(!sock || !sock->peer || !ovpn_peer_hold(sock->peer))) {
-@@ -155,7 +172,8 @@ static int ovpn_tcp_recvmsg(struct sock *sk, struct msghdr *msg, size_t len,
+@@ -155,7 +171,8 @@ static int ovpn_tcp_recvmsg(struct sock *sk, struct msghdr *msg, size_t len,
  	peer = sock->peer;
  	rcu_read_unlock();
  
@@ -61,19 +59,16 @@ index 0d7f303..55542c6 100644
  	if (!skb) {
  		if (err == -EAGAIN && sk->sk_shutdown & RCV_SHUTDOWN) {
  			ret = 0;
-@@ -321,7 +339,11 @@ void ovpn_tcp_send_skb(struct ovpn_peer *peer, struct sock *sk,
+@@ -321,7 +338,7 @@ void ovpn_tcp_send_skb(struct ovpn_peer *peer, struct sock *sk,
  	spin_lock_nested(&sk->sk_lock.slock, OVPN_TCP_DEPTH_NESTING);
  	if (sock_owned_by_user(sk)) {
  		if (skb_queue_len(&peer->tcp.out_queue) >=
-+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 9, 0)
- 		    READ_ONCE(net_hotdata.max_backlog)) {
-+#else
-+		    netdev_max_backlog) {
-+#endif
+-		    READ_ONCE(net_hotdata.max_backlog)) {
++		    ovpn_tcp_max_backlog()) {
  			dev_dstats_tx_dropped(peer->ovpn->dev);
  			kfree_skb(skb);
  			goto unlock;
-@@ -524,13 +546,23 @@ int ovpn_tcp_socket_attach(struct ovpn_socket *ovpn_sock,
+@@ -524,13 +541,21 @@ int ovpn_tcp_socket_attach(struct ovpn_socket *ovpn_sock,
  		ovpn_sock->sk->sk_prot = &ovpn_tcp_prot;
  		ovpn_sock->sk->sk_socket->ops = &ovpn_tcp_ops;
  	} else {
@@ -91,13 +86,12 @@ index 0d7f303..55542c6 100644
  
  	/* avoid using task_frag */
  	ovpn_sock->sk->sk_allocation = GFP_ATOMIC;
-+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 2, 0) || RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(9, 3)
- 	ovpn_sock->sk->sk_use_task_frag = false;
-+#endif
+-	ovpn_sock->sk->sk_use_task_frag = false;
++	ovpn_sock_disable_task_frag(ovpn_sock->sk);
  
  	/* enqueue the RX worker */
  	strp_check_rcv(&peer->tcp.strp);
-@@ -612,8 +644,10 @@ void __init ovpn_tcp_init(void)
+@@ -612,8 +637,10 @@ void __init ovpn_tcp_init(void)
  	ovpn_tcp_build_protos(&ovpn_tcp_prot, &ovpn_tcp_ops, &tcp_prot,
  			      &inet_stream_ops);
  
