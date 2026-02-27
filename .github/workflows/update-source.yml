@@ -6,9 +6,7 @@
 
 name: Update Sources
 
-on:
-  push
-  workflow_dispatch
+on: [push, workflow_dispatch]
 
 jobs:
   update-sources:
