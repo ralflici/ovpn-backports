@@ -81,12 +81,16 @@ static inline struct net *ovpn_genl_info_net(const struct genl_info *info)
 #endif
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0) || \
-	LINUX_VERSION_CODE < KERNEL_VERSION(5, 2, 0) || \
+	LINUX_VERSION_CODE < KERNEL_VERSION(4, 2, 0) || \
 	RHEL_RELEASE_CODE != 0
 
 #define OVPN_GENL_OPS_POLICY(_policy, _maxattr) \
 	.policy = (_policy), \
 	.maxattr = (_maxattr),
+
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4, 2, 0)
+
+#define OVPN_GENL_OPS_POLICY(_policy, _maxattr)
 
 #else
 
@@ -95,11 +99,16 @@ static inline struct net *ovpn_genl_info_net(const struct genl_info *info)
 #endif
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0) || \
-	LINUX_VERSION_CODE < KERNEL_VERSION(5, 2, 0)
+	LINUX_VERSION_CODE < KERNEL_VERSION(4, 2, 0) || \
+	RHEL_RELEASE_CODE != 0
 
 #define OVPN_GENL_OPS_POLICY_LEGACY_PEER_GET(_policy, _maxattr) \
 	.policy = (_policy), \
 	.maxattr = (_maxattr),
+
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4, 2, 0)
+
+#define OVPN_GENL_OPS_POLICY_LEGACY_PEER_GET(_policy, _maxattr)
 
 #else
 

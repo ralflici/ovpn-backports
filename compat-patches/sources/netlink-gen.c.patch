@@ -1,5 +1,5 @@
 diff --git a/drivers/net/ovpn/netlink-gen.c b/drivers/net/ovpn/netlink-gen.c
-index ecbe9dc..831f058 100644
+index ecbe9dc..d9ad5ff 100644
 --- a/drivers/net/ovpn/netlink-gen.c
 +++ b/drivers/net/ovpn/netlink-gen.c
 @@ -12,17 +12,48 @@
@@ -29,8 +29,8 @@ index ecbe9dc..831f058 100644
 +#endif
 +
 +#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 8, 0) && RHEL_RELEASE_CODE == 0
-+static int ovpn_nla_validate_range(const struct nlattr *attr,
-+				   struct netlink_ext_ack *extack)
++static int __maybe_unused ovpn_nla_validate_range(const struct nlattr *attr,
++						  struct netlink_ext_ack *extack)
 +{
 +	const u32 *value = nla_data(attr);
 +
