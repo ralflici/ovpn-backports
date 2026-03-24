@@ -617,7 +617,7 @@ static inline int ovpn_nl_socket_netnsid(const struct genl_info *info,
 		}
 	} else {
 		if (!net_eq(genl_info_net(info), sock_net(sock->sk))) {
-			id = peernet2id_alloc(net,
+			id = peernet2id_alloc(genl_info_net(info),
 					      sock_net(sock->sk),
 					      GFP_ATOMIC);
 		}
