@@ -21,4 +21,4 @@ git config --global --add safe.directory /repo
 make -j"$(nproc)"
 make -j"$(nproc)" selftests
 make install
-make run_tests
+OVPN_VERBOSE=1 make run_tests
