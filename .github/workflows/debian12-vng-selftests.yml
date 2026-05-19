@@ -1,0 +1,50 @@
+---
+name: Debian 12 virtme-ng selftests
+
+"on":
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  debian12-vng-selftests:
+    name: Debian 12 rootfs
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install host dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            busybox-static \
+            ca-certificates \
+            cpio \
+            debian-archive-keyring \
+            git \
+            make \
+            mmdebstrap \
+            qemu-system-x86 \
+            qemu-utils \
+            rsync \
+            virtiofsd \
+            virtme-ng
+
+      - name: Build Debian 12 rootfs
+        run: |
+          sudo ./ci/build-rootfs.sh debian-12 "${RUNNER_TEMP}/rootfs/debian-12"
+
+      - name: Import ovpn sources and selftests
+        run: |
+          ./backports-ctl.sh get-ovpn -t
+
+      - name: Run selftests in Debian 12
+        run: |
+          sudo ./ci/run-vng-selftests.sh \
+            debian-12 \
+            "${RUNNER_TEMP}/rootfs/debian-12" \
+            "${GITHUB_WORKSPACE}"
