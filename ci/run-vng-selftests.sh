@@ -40,7 +40,7 @@ if [ -z "${kernel}" ]; then
 fi
 
 kernel_release=${kernel##*/vmlinuz-}
-if [ ! -e "${rootfs}/lib/modules/${kernel_release}/build" ]; then
+if [ ! -d "${rootfs}/usr/src/linux-headers-${kernel_release}" ]; then
 	echo "Missing headers for ${kernel_release}" >&2
 	exit 1
 fi
