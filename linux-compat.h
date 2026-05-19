@@ -40,17 +40,16 @@
 /*
  * SUSE_PRODUCT_CODE encodes the product in the high byte, so raw comparisons
  * against SLE product versions also match openSUSE products such as
- * Tumbleweed/Slowroll. Engineering at its finest...
- * Keep SLE backport checks limited to SLE kernels and use LINUX_VERSION_CODE
- * for Tumbleweed/Slowroll.
+ * Tumbleweed/Slowroll. Keep SLE backport checks limited to SLE kernels
+ * and use LINUX_VERSION_CODE for Tumbleweed/Slowroll.
  */
 #define OVPN_SUSE_PRODUCT_IS(product) \
 	(SUSE_PRODUCT_CODE >= SUSE_PRODUCT(product, 0, 0, 0) && \
 	 SUSE_PRODUCT_CODE < SUSE_PRODUCT((product) + 1, 0, 0, 0))
-#define OVPN_SLE_VERSION_CODE_GE(v, pl, aux) \
+#define OVPN_SLE_VERSION_AT_LEAST(v, pl, aux) \
 	(OVPN_SUSE_PRODUCT_IS(SUSE_PRODUCT_CODE_SLE) && \
 	 SUSE_PRODUCT_CODE >= SUSE_PRODUCT(SUSE_PRODUCT_CODE_SLE, v, pl, aux))
-#define OVPN_SLE_VERSION_CODE_LT(v, pl, aux) \
+#define OVPN_SLE_VERSION_BEFORE(v, pl, aux) \
 	(!OVPN_SUSE_PRODUCT_IS(SUSE_PRODUCT_CODE_SLE) || \
 	 SUSE_PRODUCT_CODE < SUSE_PRODUCT(SUSE_PRODUCT_CODE_SLE, v, pl, aux))
 
@@ -169,7 +168,7 @@ static inline void dev_sw_netstats_rx_add(struct net_device *dev,
 #endif /* LINUX_VERSION_CODE < KERNEL_VERSION(5, 5, 0) */
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 4, 0) && \
-	OVPN_SLE_VERSION_CODE_LT(15, 3, 0)
+	OVPN_SLE_VERSION_BEFORE(15, 3, 0)
 
 /* commit 895b5c9f206e renamed nf_reset to nf_reset_ct */
 #undef nf_reset_ct
@@ -179,7 +178,7 @@ static inline void dev_sw_netstats_rx_add(struct net_device *dev,
 #define fallthrough do {} while (0)
 #endif
 
-#endif /* LINUX_VERSION_CODE < KERNEL_VERSION(5, 4, 0) && OVPN_SLE_VERSION_CODE_LT(15, 3, 0) */
+#endif /* LINUX_VERSION_CODE < KERNEL_VERSION(5, 4, 0) && OVPN_SLE_VERSION_BEFORE(15, 3, 0) */
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 2, 0)
 
