@@ -84,7 +84,8 @@ enum {
 	OVPN_SLE_VERSION_AT_LEAST(15, 6, 0)
 
 #include <net/sock.h>
-static int ovpn_sendmsg_locked(struct sock *sk, struct msghdr *msg)
+static __maybe_unused int ovpn_sendmsg_locked(struct sock *sk,
+					      struct msghdr *msg)
 {
 	struct socket *sock = sk->sk_socket;
 	size_t size = msg_data_left(msg);
