@@ -18,7 +18,6 @@ readlink -f "/lib/modules/$(uname -r)/build"
 # ownership and Git may reject it as a dubious worktree.
 git config --global --add safe.directory /repo
 
-./backports-ctl.sh get-ovpn -t
 make -j"$(nproc)"
 make -j"$(nproc)" selftests
 make install

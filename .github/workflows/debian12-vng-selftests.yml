@@ -25,6 +25,8 @@ jobs:
             ca-certificates \
             cpio \
             debian-archive-keyring \
+            git \
+            make \
             mmdebstrap \
             qemu-system-x86 \
             qemu-utils \
@@ -35,6 +37,10 @@ jobs:
       - name: Build Debian 12 rootfs
         run: |
           sudo ./ci/build-rootfs.sh debian-12 "${RUNNER_TEMP}/rootfs/debian-12"
+
+      - name: Import ovpn sources and selftests
+        run: |
+          ./backports-ctl.sh get-ovpn -t
 
       - name: Run selftests in Debian 12
         run: |

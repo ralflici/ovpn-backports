@@ -45,6 +45,14 @@ if [ ! -d "${rootfs}/usr/src/linux-headers-${kernel_release}" ]; then
 	exit 1
 fi
 
+vng_args=()
+if [ -e /dev/kvm ]; then
+	echo "Using KVM acceleration"
+else
+	echo "KVM unavailable, using QEMU emulation"
+	vng_args+=(--disable-kvm)
+fi
+
 echo "Booting ${distro} with ${kernel_release}"
 
 vng \
@@ -52,8 +60,7 @@ vng \
 	--root "${rootfs}" \
 	--rw \
 	--user root \
-	--disable-kvm \
-	--disable-monitor \
+	"${vng_args[@]}" \
 	--disable-microvm \
 	--force-initramfs \
 	--network user \
