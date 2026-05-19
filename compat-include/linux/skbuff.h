@@ -25,7 +25,7 @@ static inline unsigned int skb_frag_off(const skb_frag_t *frag)
 #endif /* LINUX_VERSION_CODE < KERNEL_VERSION(4, 19, 201) && RHEL_RELEASE_CODE < RHEL_RELEASE_VERSION(8, 10) */
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(6, 5, 0) && \
-	SUSE_PRODUCT_CODE < SUSE_PRODUCT(1, 15, 6, 0)
+	OVPN_SLE_VERSION_CODE_LT(15, 6, 0)
 
 int kernel_sendmsg_locked(struct sock *sk, struct msghdr *msg, struct kvec *vec,
 			  size_t num, size_t size);
@@ -34,7 +34,19 @@ int kernel_sendpage_locked(struct sock *sk, struct page *page, int offset,
 
 #elif LINUX_VERSION_CODE < KERNEL_VERSION(6, 16, 0)
 
-static int ovpn_sendmsg_locked(struct sock *sk, struct msghdr *msg);
+static inline int ovpn_sendmsg_locked(struct sock *sk, struct msghdr *msg)
+{
+	struct socket *sock = sk->sk_socket;
+	size_t size = msg_data_left(msg);
+
+	if (!sock)
+		return -EINVAL;
+
+	if (!sock->ops->sendmsg_locked)
+		return -EOPNOTSUPP;
+
+	return sock->ops->sendmsg_locked(sk, msg, size);
+}
 
 #endif /* LINUX_VERSION_CODE < KERNEL_VERSION(6, 5, 0) */
 
@@ -64,7 +76,7 @@ do_frag_list:
 		msg.msg_flags = MSG_DONTWAIT | flags;
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(6, 5, 0) && \
-	SUSE_PRODUCT_CODE < SUSE_PRODUCT(1, 15, 6, 0)
+		OVPN_SLE_VERSION_CODE_LT(15, 6, 0)
 		ret = kernel_sendmsg_locked(sk, &msg, &kv, 1, slen);
 #else /* LINUX_VERSION_CODE >= KERNEL_VERSION (6, 5, 0) */
 		iov_iter_kvec(&msg.msg_iter, ITER_SOURCE, &kv, 1, slen);
@@ -101,7 +113,7 @@ do_frag_list:
 
 		while (slen) {
 #if LINUX_VERSION_CODE < KERNEL_VERSION(6, 5, 0) && \
-	SUSE_PRODUCT_CODE < SUSE_PRODUCT(1, 15, 6, 0)
+		OVPN_SLE_VERSION_CODE_LT(15, 6, 0)
 			ret = kernel_sendpage_locked(
 				sk, skb_frag_page(frag),
 				skb_frag_off(frag) + offset, slen,
