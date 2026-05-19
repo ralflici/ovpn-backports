@@ -10,13 +10,13 @@
 #   - original sources: kernel/drivers/net/ovpn
 #   - original tests:   kernel/tools/testing/selftests/net/ovpn
 #   - modified sources: drivers/net/ovpn
-#   - modified tests:   tests/ovpn-cli
+#   - modified tests:   tools/testing/selftests/net/ovpn
 #
 # Usage:
 #   Ensure that the modified source and test files exist in drivers/net/ovpn
-#   and tests/ovpn-cli respectively relative to your repository root. Then
-#   override ORIG_SOURCES_DIR and ORIG_TESTS_DIR if needed and run the
-#   script.
+#   and tools/testing/selftests/net/ovpn respectively relative to your
+#   repository root. Then override ORIG_SOURCES_DIR and ORIG_TESTS_DIR if
+#   needed and run the script.
 #   It creates patch files in compat-patches/sources and compat-patches/tests
 #   using 'git diff --no-index' (empty patches are removed) and substitutes
 #   original paths with modified ones.
@@ -24,7 +24,7 @@
 ORIG_SOURCES_DIR=${ORIG_SOURCES_DIR:-kernel/drivers/net/ovpn}
 ORIG_TESTS_DIR=${ORIG_TESTS_DIR:-kernel/tools/testing/selftests/net/ovpn}
 MOD_SOURCES_DIR="drivers/net/ovpn"
-MOD_TESTS_DIR="tests/ovpn-cli"
+MOD_TESTS_DIR="tools/testing/selftests/net/ovpn"
 
 # create the escaped version of the directories
 if [[ $ORIG_SOURCES_DIR =~ ^/ ]]; then
