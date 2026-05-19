@@ -4,7 +4,7 @@
 set -euo pipefail
 
 usage() {
-	echo "Usage: $0 <debian-12> <rootfs-dir> <repo-dir>" >&2
+	echo "Usage: $0 <debian-12|ubuntu-24.04> <rootfs-dir> <repo-dir>" >&2
 	exit 1
 }
 
@@ -16,7 +16,7 @@ distro="$1"
 rootfs=$(realpath "$2")
 repo=$(realpath "$3")
 
-if [ "${distro}" != "debian-12" ]; then
+if [ "${distro}" != "debian-12" ] && [ "${distro}" != "ubuntu-24.04" ]; then
 	echo "Unsupported distro: ${distro}" >&2
 	usage
 fi

@@ -1,5 +1,5 @@
 ---
-name: Debian 12 virtme-ng selftests
+name: virtme-ng selftests
 
 "on":
   workflow_dispatch:
@@ -8,10 +8,17 @@ permissions:
   contents: read
 
 jobs:
-  debian12-vng-selftests:
-    name: Debian 12 rootfs
+  vng-selftests:
+    name: ${{ matrix.distro }} rootfs
     runs-on: ubuntu-24.04
     timeout-minutes: 120
+
+    strategy:
+      fail-fast: false
+      matrix:
+        distro:
+          - debian-12
+          - ubuntu-24.04
 
     steps:
       - name: Checkout repository
@@ -31,20 +38,23 @@ jobs:
             qemu-system-x86 \
             qemu-utils \
             rsync \
+            ubuntu-keyring \
             virtiofsd \
             virtme-ng
 
-      - name: Build Debian 12 rootfs
+      - name: Build ${{ matrix.distro }} rootfs
         run: |
-          sudo ./ci/build-rootfs.sh debian-12 "${RUNNER_TEMP}/rootfs/debian-12"
+          sudo ./ci/build-rootfs.sh \
+            "${{ matrix.distro }}" \
+            "${RUNNER_TEMP}/rootfs/${{ matrix.distro }}"
 
       - name: Import ovpn sources and selftests
         run: |
           ./backports-ctl.sh get-ovpn -t
 
-      - name: Run selftests in Debian 12
+      - name: Run selftests in ${{ matrix.distro }}
         run: |
           sudo ./ci/run-vng-selftests.sh \
-            debian-12 \
-            "${RUNNER_TEMP}/rootfs/debian-12" \
+            "${{ matrix.distro }}" \
+            "${RUNNER_TEMP}/rootfs/${{ matrix.distro }}" \
             "${GITHUB_WORKSPACE}"

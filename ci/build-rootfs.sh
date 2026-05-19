@@ -4,7 +4,7 @@
 set -euo pipefail
 
 usage() {
-	echo "Usage: $0 <debian-12> <rootfs-dir>" >&2
+	echo "Usage: $0 <debian-12|ubuntu-24.04> <rootfs-dir>" >&2
 	exit 1
 }
 
@@ -15,7 +15,7 @@ fi
 distro="$1"
 rootfs="$2"
 
-if [ "${distro}" != "debian-12" ]; then
+if [ "${distro}" != "debian-12" ] && [ "${distro}" != "ubuntu-24.04" ]; then
 	echo "Unsupported distro: ${distro}" >&2
 	usage
 fi
@@ -46,8 +46,6 @@ packages=(
 	libnl-3-dev
 	libnl-genl-3-dev
 	libssl-dev
-	linux-headers-amd64
-	linux-image-amd64
 	make
 	nftables
 	pkg-config
@@ -60,24 +58,73 @@ packages=(
 	tcpdump
 )
 
-include=$(IFS=,; echo "${packages[*]}")
+build_debian_12() {
+	local debian_keyring include
+	local debian_packages=(
+		"${packages[@]}"
+		linux-headers-amd64
+		linux-image-amd64
+	)
 
-debian_keyring="/usr/share/keyrings/debian-archive-keyring.gpg"
-if [ ! -r "${debian_keyring}" ]; then
-	echo "Missing Debian archive keyring: ${debian_keyring}" >&2
-	echo "Install debian-archive-keyring on the host." >&2
-	exit 1
-fi
+	include=$(IFS=,; echo "${debian_packages[*]}")
 
-mmdebstrap \
-	--variant=minbase \
-	--keyring="${debian_keyring}" \
-	--include="${include}" \
-	bookworm \
-	"${rootfs}" \
-	"deb http://deb.debian.org/debian bookworm main" \
-	"deb http://deb.debian.org/debian bookworm-updates main" \
-	"deb http://security.debian.org/debian-security bookworm-security main"
+	debian_keyring="/usr/share/keyrings/debian-archive-keyring.gpg"
+	if [ ! -r "${debian_keyring}" ]; then
+		echo "Missing Debian archive keyring: ${debian_keyring}" >&2
+		echo "Install debian-archive-keyring on the host." >&2
+		exit 1
+	fi
+
+	mmdebstrap \
+		--variant=minbase \
+		--keyring="${debian_keyring}" \
+		--include="${include}" \
+		bookworm \
+		"${rootfs}" \
+		"deb http://deb.debian.org/debian bookworm main" \
+		"deb http://deb.debian.org/debian bookworm-updates main" \
+		"deb http://security.debian.org/debian-security bookworm-security main"
+}
+
+build_ubuntu_2404() {
+	local include ubuntu_keyring
+	local ubuntu_packages=(
+		"${packages[@]}"
+		busybox-static
+		linux-headers-generic
+		linux-image-generic
+		systemd-sysv
+		udev
+	)
+
+	include=$(IFS=,; echo "${ubuntu_packages[*]}")
+
+	ubuntu_keyring="/usr/share/keyrings/ubuntu-archive-keyring.gpg"
+	if [ ! -r "${ubuntu_keyring}" ]; then
+		echo "Missing Ubuntu archive keyring: ${ubuntu_keyring}" >&2
+		echo "Install ubuntu-keyring on the host." >&2
+		exit 1
+	fi
+
+	mmdebstrap \
+		--variant=minbase \
+		--keyring="${ubuntu_keyring}" \
+		--include="${include}" \
+		noble \
+		"${rootfs}" \
+		"deb http://archive.ubuntu.com/ubuntu noble main universe" \
+		"deb http://archive.ubuntu.com/ubuntu noble-updates main universe" \
+		"deb http://security.ubuntu.com/ubuntu noble-security main universe"
+}
+
+case "${distro}" in
+debian-12)
+	build_debian_12
+	;;
+ubuntu-24.04)
+	build_ubuntu_2404
+	;;
+esac
 
 if ! compgen -G "${rootfs}/boot/vmlinuz-*" >/dev/null; then
 	echo "No kernel image found in ${rootfs}/boot" >&2
