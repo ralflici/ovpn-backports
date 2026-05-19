@@ -7,7 +7,12 @@
 
 name: Update Sources
 
-"on": [push, workflow_dispatch]
+"on":
+  push:
+    paths-ignore:
+      - ".github/workflows/**"
+      - "ci/**"
+  workflow_dispatch:
 
 jobs:
   update-sources:
