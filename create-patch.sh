@@ -44,6 +44,16 @@ fi
 ESC_MOD_SOURCES_DIR="${MOD_SOURCES_DIR//\//\\\/}"
 ESC_MOD_TESTS_DIR="${MOD_TESTS_DIR//\//\\\/}"
 
+is_kernel_build_artifact() {
+	case "$1" in
+		*.ko|*.mod|*.mod.c|*.o|Module.symvers|modules.order)
+			return 0
+			;;
+	esac
+
+	return 1
+}
+
 # remove old patches
 rm -f compat-patches/sources/*.patch
 rm -f compat-patches/tests/*.patch
@@ -66,6 +76,20 @@ for filepath in "$ORIG_SOURCES_DIR"/*; do
         sed -i "s/$ESC_ORIG_SOURCES_DIR/$ESC_MOD_SOURCES_DIR/" "$out"
     fi
 done
+for filepath in "$MOD_SOURCES_DIR"/*; do
+    base=$(basename "$filepath")
+    out="compat-patches/sources/${base}.patch"
+    if [[ -f "$filepath" && ! -e "$ORIG_SOURCES_DIR/$base" ]]; then
+        if is_kernel_build_artifact "$base"; then
+            continue
+        fi
+        if git diff --no-index --numstat /dev/null "$filepath" | \
+            grep -q '^-[[:space:]]\+-[[:space:]]'; then
+            continue
+        fi
+        git diff --no-index /dev/null "$filepath" > "$out"
+    fi
+done
 
 # handle the test files
 for filepath in "$ORIG_TESTS_DIR"/*; do
@@ -79,5 +103,16 @@ for filepath in "$ORIG_TESTS_DIR"/*; do
             continue
         fi
         sed -i "s/$ESC_ORIG_TESTS_DIR/$ESC_MOD_TESTS_DIR/" "$out"
+    fi
+done
+for filepath in "$MOD_TESTS_DIR"/*; do
+    base=$(basename "$filepath")
+    out="compat-patches/tests/${base}.patch"
+    if [[ -f "$filepath" && ! -e "$ORIG_TESTS_DIR/$base" ]]; then
+        if git diff --no-index --numstat /dev/null "$filepath" | \
+            grep -q '^-[[:space:]]\+-[[:space:]]'; then
+            continue
+        fi
+        git diff --no-index /dev/null "$filepath" > "$out"
     fi
 done
