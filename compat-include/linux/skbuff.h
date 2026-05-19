@@ -34,21 +34,7 @@ int kernel_sendpage_locked(struct sock *sk, struct page *page, int offset,
 
 #elif LINUX_VERSION_CODE < KERNEL_VERSION(6, 16, 0)
 
-#include <linux/net.h>
-
-static inline int ovpn_sendmsg_locked(struct sock *sk, struct msghdr *msg)
-{
-	struct socket *sock = sk->sk_socket;
-	size_t size = msg_data_left(msg);
-
-	if (!sock)
-		return -EINVAL;
-
-	if (!sock->ops->sendmsg_locked)
-		return -EOPNOTSUPP;
-
-	return sock->ops->sendmsg_locked(sk, msg, size);
-}
+static int ovpn_sendmsg_locked(struct sock *sk, struct msghdr *msg);
 
 #endif /* LINUX_VERSION_CODE < KERNEL_VERSION(6, 5, 0) */
 

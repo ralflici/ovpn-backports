@@ -79,6 +79,28 @@ enum {
 
 #endif /* IFLA_OVPN_MAX */
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 5, 0) && \
+	LINUX_VERSION_CODE < KERNEL_VERSION(6, 16, 0)) || \
+	OVPN_SLE_VERSION_AT_LEAST(15, 6, 0)
+
+#include <net/sock.h>
+static __maybe_unused int ovpn_sendmsg_locked(struct sock *sk,
+					      struct msghdr *msg)
+{
+	struct socket *sock = sk->sk_socket;
+	size_t size = msg_data_left(msg);
+
+	if (!sock)
+		return -EINVAL;
+
+	if (!sock->ops->sendmsg_locked)
+		return -EOPNOTSUPP;
+
+	return sock->ops->sendmsg_locked(sk, msg, size);
+}
+
+#endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 5, 0) && LINUX_VERSION_CODE < KERNEL_VERSION(6, 16, 0)) || OVPN_SLE_VERSION_AT_LEAST(15, 6, 0) */
+
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 19, 0)
 
 /**
