@@ -55,6 +55,10 @@ import_ovpn_selftests() {
 		[ -e "$patch" ] || continue
 		git apply --verbose "$patch"
 	done
+	for patch in "$PWD"/compat-patches/ynl/*.patch; do
+		[ -e "$patch" ] || continue
+		git apply --verbose "$patch"
+	done
 }
 
 get_ovpn() {

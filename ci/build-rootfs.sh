@@ -3,8 +3,13 @@
 
 set -euo pipefail
 
+script_dir=$(unset CDPATH; cd -- "$(dirname -- "$0")" && pwd)
+
+# shellcheck source=ci/rootfs-common.sh
+. "${script_dir}/rootfs-common.sh"
+
 usage() {
-	echo "Usage: $0 <debian-12|debian-13|ubuntu-20.04|ubuntu-24.04> <rootfs-dir>" >&2
+	echo "Usage: $0 <debian-10|debian-11|debian-12|debian-13|ubuntu-20.04|ubuntu-22.04|ubuntu-24.04|fedora-44> <rootfs-dir>" >&2
 	exit 1
 }
 
@@ -15,8 +20,10 @@ fi
 distro="$1"
 rootfs="$2"
 
-if [ "${distro}" != "debian-12" ] && [ "${distro}" != "debian-13" ] &&
-	[ "${distro}" != "ubuntu-20.04" ] && [ "${distro}" != "ubuntu-24.04" ]; then
+if [ "${distro}" != "debian-10" ] && [ "${distro}" != "debian-11" ] &&
+	[ "${distro}" != "debian-12" ] && [ "${distro}" != "debian-13" ] &&
+	[ "${distro}" != "ubuntu-20.04" ] && [ "${distro}" != "ubuntu-22.04" ] &&
+	[ "${distro}" != "ubuntu-24.04" ] && [ "${distro}" != "fedora-44" ]; then
 	echo "Unsupported distro: ${distro}" >&2
 	usage
 fi
@@ -59,41 +66,51 @@ packages=(
 	tcpdump
 )
 
+build_debian_10() {
+	build_debian \
+		buster \
+		http://archive.debian.org/debian \
+		http://archive.debian.org/debian-security \
+		buster/updates \
+		--aptopt='Acquire::Check-Valid-Until "false"'
+}
+
+build_debian_11() {
+	build_debian \
+		bullseye \
+		http://deb.debian.org/debian \
+		http://security.debian.org/debian-security \
+		bullseye-security
+}
+
 build_debian_12() {
-	local debian_keyring include
-	local debian_packages=(
-		"${packages[@]}"
-		linux-headers-amd64
-		linux-image-amd64
-	)
-
-	include=$(IFS=,; echo "${debian_packages[*]}")
-
-	debian_keyring="/usr/share/keyrings/debian-archive-keyring.gpg"
-	if [ ! -r "${debian_keyring}" ]; then
-		echo "Missing Debian archive keyring: ${debian_keyring}" >&2
-		echo "Install debian-archive-keyring on the host." >&2
-		exit 1
-	fi
-
-	mmdebstrap \
-		--variant=minbase \
-		--keyring="${debian_keyring}" \
-		--include="${include}" \
+	build_debian \
 		bookworm \
-		"${rootfs}" \
-		"deb http://deb.debian.org/debian bookworm main" \
-		"deb http://deb.debian.org/debian bookworm-updates main" \
-		"deb http://security.debian.org/debian-security bookworm-security main"
+		http://deb.debian.org/debian \
+		http://security.debian.org/debian-security \
+		bookworm-security
 }
 
 build_debian_13() {
+	build_debian \
+		trixie \
+		http://deb.debian.org/debian \
+		http://security.debian.org/debian-security \
+		trixie-security
+}
+
+build_debian() {
+	local codename="$1"
+	local mirror="$2"
+	local security_mirror="$3"
+	local security_suite="$4"
 	local debian_keyring include
 	local debian_packages=(
 		"${packages[@]}"
 		linux-headers-amd64
 		linux-image-amd64
 	)
+	shift 4
 
 	include=$(IFS=,; echo "${debian_packages[*]}")
 
@@ -105,48 +122,32 @@ build_debian_13() {
 	fi
 
 	mmdebstrap \
+		"$@" \
 		--variant=minbase \
 		--keyring="${debian_keyring}" \
 		--include="${include}" \
-		trixie \
+		"${codename}" \
 		"${rootfs}" \
-		"deb http://deb.debian.org/debian trixie main" \
-		"deb http://deb.debian.org/debian trixie-updates main" \
-		"deb http://security.debian.org/debian-security trixie-security main"
+		"deb ${mirror} ${codename} main" \
+		"deb ${mirror} ${codename}-updates main" \
+		"deb ${security_mirror} ${security_suite} main"
 }
 
 build_ubuntu_2004() {
-	local include ubuntu_keyring
-	local ubuntu_packages=(
-		"${packages[@]}"
-		busybox-static
-		linux-headers-generic
-		linux-image-generic
-		systemd-sysv
-		udev
-	)
+	build_ubuntu focal python3.9
+}
 
-	include=$(IFS=,; echo "${ubuntu_packages[*]}")
-
-	ubuntu_keyring="/usr/share/keyrings/ubuntu-archive-keyring.gpg"
-	if [ ! -r "${ubuntu_keyring}" ]; then
-		echo "Missing Ubuntu archive keyring: ${ubuntu_keyring}" >&2
-		echo "Install ubuntu-keyring on the host." >&2
-		exit 1
-	fi
-
-	mmdebstrap \
-		--variant=minbase \
-		--keyring="${ubuntu_keyring}" \
-		--include="${include}" \
-		focal \
-		"${rootfs}" \
-		"deb http://archive.ubuntu.com/ubuntu focal main universe" \
-		"deb http://archive.ubuntu.com/ubuntu focal-updates main universe" \
-		"deb http://security.ubuntu.com/ubuntu focal-security main universe"
+build_ubuntu_2204() {
+	build_ubuntu jammy
 }
 
 build_ubuntu_2404() {
+	build_ubuntu noble
+}
+
+build_ubuntu() {
+	local codename="$1"
+	local extra_python="${2:-}"
 	local include ubuntu_keyring
 	local ubuntu_packages=(
 		"${packages[@]}"
@@ -156,6 +157,10 @@ build_ubuntu_2404() {
 		systemd-sysv
 		udev
 	)
+
+	if [ -n "${extra_python}" ]; then
+		ubuntu_packages+=("${extra_python}")
+	fi
 
 	include=$(IFS=,; echo "${ubuntu_packages[*]}")
 
@@ -170,14 +175,70 @@ build_ubuntu_2404() {
 		--variant=minbase \
 		--keyring="${ubuntu_keyring}" \
 		--include="${include}" \
-		noble \
+		"${codename}" \
 		"${rootfs}" \
-		"deb http://archive.ubuntu.com/ubuntu noble main universe" \
-		"deb http://archive.ubuntu.com/ubuntu noble-updates main universe" \
-		"deb http://security.ubuntu.com/ubuntu noble-security main universe"
+		"deb http://archive.ubuntu.com/ubuntu ${codename} main universe" \
+		"deb http://archive.ubuntu.com/ubuntu ${codename}-updates main universe" \
+		"deb http://security.ubuntu.com/ubuntu ${codename}-security main universe"
+}
+
+build_fedora_44() {
+	local repo_dir="${script_dir}/repos/fedora"
+	local packages=(
+		bc
+		binutils
+		bison
+		ca-certificates
+		diffutils
+		elfutils-libelf-devel
+		flex
+		gawk
+		gcc
+		git
+		glibc-devel
+		iperf3
+		iproute
+		iputils
+		jq
+		kernel
+		kernel-devel
+		kernel-headers
+		kmod
+		libnl3-devel
+		make
+		mbedtls-devel
+		nftables
+		openssl-devel
+		pkgconf-pkg-config
+		procps-ng
+		psmisc
+		python3
+		python3-jsonschema
+		python3-pyyaml
+		rsync
+		systemd
+		systemd-udev
+		tcpdump
+	)
+
+	dnf -y \
+		--installroot="${rootfs}" \
+		--releasever=44 \
+		--setopt="reposdir=${repo_dir}" \
+		--setopt=install_weak_deps=False \
+		--setopt=tsflags=nodocs \
+		install "${packages[@]}"
+
+	dnf -y --installroot="${rootfs}" clean all
 }
 
 case "${distro}" in
+debian-10)
+	build_debian_10
+	;;
+debian-11)
+	build_debian_11
+	;;
 debian-12)
 	build_debian_12
 	;;
@@ -187,21 +248,27 @@ debian-13)
 ubuntu-20.04)
 	build_ubuntu_2004
 	;;
+ubuntu-22.04)
+	build_ubuntu_2204
+	;;
 ubuntu-24.04)
 	build_ubuntu_2404
 	;;
+fedora-44)
+	build_fedora_44
+	;;
 esac
 
-if ! compgen -G "${rootfs}/boot/vmlinuz-*" >/dev/null; then
-	echo "No kernel image found in ${rootfs}/boot" >&2
+kernel=$(rootfs_find_kernel_image "${rootfs}")
+
+if [ -z "${kernel}" ]; then
+	echo "No kernel image found in ${rootfs}" >&2
 	exit 1
 fi
 
-kernel=$(find "${rootfs}/boot" -maxdepth 1 -type f -name 'vmlinuz-*' |
-	sort -V | tail -n1)
-kernel_release=${kernel##*/vmlinuz-}
+kernel_release=$(rootfs_kernel_release "${kernel}")
 
-if [ ! -d "${rootfs}/usr/src/linux-headers-${kernel_release}" ]; then
+if ! rootfs_has_kernel_headers "${rootfs}" "${kernel_release}"; then
 	echo "Missing headers for ${kernel_release}" >&2
 	exit 1
 fi
