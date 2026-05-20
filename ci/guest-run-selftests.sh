@@ -19,6 +19,7 @@ readlink -f "/lib/modules/$(uname -r)/build"
 git config --global --add safe.directory /repo
 
 make -j"$(nproc)"
+make -C tools/testing/selftests TARGETS=net/ovpn clean
 make -j"$(nproc)" selftests
 make install
 

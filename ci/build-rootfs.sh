@@ -9,7 +9,7 @@ script_dir=$(unset CDPATH; cd -- "$(dirname -- "$0")" && pwd)
 . "${script_dir}/rootfs-common.sh"
 
 usage() {
-	echo "Usage: $0 <debian-10|debian-11|debian-12|debian-13|ubuntu-20.04|ubuntu-22.04|ubuntu-24.04|ubuntu-25.10|fedora-44|alma-8|alma-9|alma-10|opensuse-leap-15.6> <rootfs-dir>" >&2
+	echo "Usage: $0 <debian-10|debian-11|debian-12|debian-13|ubuntu-20.04|ubuntu-22.04|ubuntu-24.04|ubuntu-25.10|fedora-44|alma-8|alma-9|alma-10|opensuse-leap-15.6|opensuse-tumbleweed> <rootfs-dir>" >&2
 	exit 1
 }
 
@@ -26,7 +26,8 @@ if [ "${distro}" != "debian-10" ] && [ "${distro}" != "debian-11" ] &&
 	[ "${distro}" != "ubuntu-24.04" ] && [ "${distro}" != "ubuntu-25.10" ] &&
 	[ "${distro}" != "fedora-44" ] && [ "${distro}" != "alma-8" ] &&
 	[ "${distro}" != "alma-9" ] && [ "${distro}" != "alma-10" ] &&
-	[ "${distro}" != "opensuse-leap-15.6" ]; then
+	[ "${distro}" != "opensuse-leap-15.6" ] &&
+	[ "${distro}" != "opensuse-tumbleweed" ]; then
 	echo "Unsupported distro: ${distro}" >&2
 	usage
 fi
@@ -343,6 +344,17 @@ build_alma() {
 build_opensuse_leap() {
 	local releasever="$1"
 	local repo_dir="${script_dir}/repos/opensuse-leap"
+	build_opensuse "${repo_dir}" "${releasever}"
+}
+
+build_opensuse_tumbleweed() {
+	local repo_dir="${script_dir}/repos/opensuse-tumbleweed"
+	build_opensuse "${repo_dir}" tumbleweed
+}
+
+build_opensuse() {
+	local repo_dir="$1"
+	local releasever="$2"
 	local packages=(
 		bc
 		binutils
@@ -427,6 +439,9 @@ alma-10)
 	;;
 opensuse-leap-15.6)
 	build_opensuse_leap 15.6
+	;;
+opensuse-tumbleweed)
+	build_opensuse_tumbleweed
 	;;
 esac
 

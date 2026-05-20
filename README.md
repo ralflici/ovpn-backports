@@ -109,7 +109,7 @@ make run_tests
 The `virtme-ng selftests` workflow builds disposable root filesystems and runs
 the ovpn selftests inside virtual machines. The current matrix covers Debian
 10, 11, 12, 13, Ubuntu 20.04, 22.04, 24.04, 25.10, Fedora 44, and
-AlmaLinux 8, 9, 10, and openSUSE Leap 15.6.
+AlmaLinux 8, 9, 10, openSUSE Leap 15.6, and openSUSE Tumbleweed.
 
 The workflow is manual and can be started from the GitHub Actions UI. Useful
 environment knobs are:

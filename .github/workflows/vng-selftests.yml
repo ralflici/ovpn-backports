@@ -30,6 +30,7 @@ jobs:
           - alma-9
           - alma-10
           - opensuse-leap-15.6
+          - opensuse-tumbleweed
 
     steps:
       - name: Checkout repository
