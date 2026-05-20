@@ -9,7 +9,7 @@ script_dir=$(unset CDPATH; cd -- "$(dirname -- "$0")" && pwd)
 . "${script_dir}/rootfs-common.sh"
 
 usage() {
-	echo "Usage: $0 <debian-10|debian-11|debian-12|debian-13|ubuntu-20.04|ubuntu-22.04|ubuntu-24.04|ubuntu-25.10|fedora-44> <rootfs-dir> <repo-dir>" >&2
+	echo "Usage: $0 <debian-10|debian-11|debian-12|debian-13|ubuntu-20.04|ubuntu-22.04|ubuntu-24.04|ubuntu-25.10|fedora-44|alma-9> <rootfs-dir> <repo-dir>" >&2
 	exit 1
 }
 
@@ -25,7 +25,7 @@ if [ "${distro}" != "debian-10" ] && [ "${distro}" != "debian-11" ] &&
 	[ "${distro}" != "debian-12" ] && [ "${distro}" != "debian-13" ] &&
 	[ "${distro}" != "ubuntu-20.04" ] && [ "${distro}" != "ubuntu-22.04" ] &&
 	[ "${distro}" != "ubuntu-24.04" ] && [ "${distro}" != "ubuntu-25.10" ] &&
-	[ "${distro}" != "fedora-44" ]; then
+	[ "${distro}" != "fedora-44" ] && [ "${distro}" != "alma-9" ]; then
 	echo "Unsupported distro: ${distro}" >&2
 	usage
 fi
@@ -55,6 +55,8 @@ if ! rootfs_has_kernel_headers "${rootfs}" "${kernel_release}"; then
 fi
 
 vng_args=()
+vng_cmd="${VNG:-vng}"
+guest_repo="/repo"
 if [ -e /dev/kvm ]; then
 	echo "Using KVM acceleration"
 else
@@ -68,10 +70,21 @@ if [ "${distro}" = "debian-10" ]; then
 	echo "Using 9p rootfs for Debian 10"
 	vng_args+=(--force-9p)
 fi
+if [ "${distro}" = "alma-9" ]; then
+	rsync -a --delete \
+		--exclude .git \
+		--exclude .semcode.db \
+		--exclude CI-MATRIX-NOTES.md \
+		"${repo}/" "${rootfs}${guest_repo}/"
+
+	vng_args+=(--root-guesttools --no-virtme-ng-init)
+else
+	vng_args+=(--rwdir "${guest_repo}=${repo}")
+fi
 
 echo "Booting ${distro} with ${kernel_release}"
 
-vng \
+"${vng_cmd}" \
 	--run "${kernel}" \
 	--root "${rootfs}" \
 	--rw \
@@ -81,6 +94,5 @@ vng \
 	--force-initramfs \
 	--cpus "${VNG_CPUS:-2}" \
 	--memory "${VNG_MEMORY:-4096M}" \
-	--rwdir "/repo=${repo}" \
 	-- \
-	/repo/ci/guest-run-selftests.sh
+	"${guest_repo}/ci/guest-run-selftests.sh"

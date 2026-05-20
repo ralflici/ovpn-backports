@@ -9,7 +9,7 @@ script_dir=$(unset CDPATH; cd -- "$(dirname -- "$0")" && pwd)
 . "${script_dir}/rootfs-common.sh"
 
 usage() {
-	echo "Usage: $0 <debian-10|debian-11|debian-12|debian-13|ubuntu-20.04|ubuntu-22.04|ubuntu-24.04|ubuntu-25.10|fedora-44> <rootfs-dir>" >&2
+	echo "Usage: $0 <debian-10|debian-11|debian-12|debian-13|ubuntu-20.04|ubuntu-22.04|ubuntu-24.04|ubuntu-25.10|fedora-44|alma-9> <rootfs-dir>" >&2
 	exit 1
 }
 
@@ -24,7 +24,7 @@ if [ "${distro}" != "debian-10" ] && [ "${distro}" != "debian-11" ] &&
 	[ "${distro}" != "debian-12" ] && [ "${distro}" != "debian-13" ] &&
 	[ "${distro}" != "ubuntu-20.04" ] && [ "${distro}" != "ubuntu-22.04" ] &&
 	[ "${distro}" != "ubuntu-24.04" ] && [ "${distro}" != "ubuntu-25.10" ] &&
-	[ "${distro}" != "fedora-44" ]; then
+	[ "${distro}" != "fedora-44" ] && [ "${distro}" != "alma-9" ]; then
 	echo "Unsupported distro: ${distro}" >&2
 	usage
 fi
@@ -188,6 +188,64 @@ build_ubuntu() {
 		"deb http://security.ubuntu.com/ubuntu ${codename}-security main universe"
 }
 
+mount_dnf_rootfs() {
+	mkdir -p \
+		"${rootfs}/dev" \
+		"${rootfs}/proc" \
+		"${rootfs}/sys" \
+		"${rootfs}/run"
+
+	mount --rbind /dev "${rootfs}/dev"
+	mount --make-rslave "${rootfs}/dev"
+	mount -t proc proc "${rootfs}/proc"
+	mount -t sysfs sysfs "${rootfs}/sys"
+	mount -t tmpfs tmpfs "${rootfs}/run"
+}
+
+umount_dnf_rootfs() {
+	umount -R "${rootfs}/run" 2>/dev/null || true
+	umount -R "${rootfs}/sys" 2>/dev/null || true
+	umount -R "${rootfs}/proc" 2>/dev/null || true
+	umount -R "${rootfs}/dev" 2>/dev/null || true
+}
+
+build_dnf() {
+	local repo_dir="$1"
+	local releasever="$2"
+	local allow_install_failure="$3"
+	local rc clean_rc
+	shift 3
+
+	mount_dnf_rootfs
+
+	set +e
+	dnf -y \
+		--installroot="${rootfs}" \
+		--releasever="${releasever}" \
+		--setopt="reposdir=${repo_dir}" \
+		--setopt=install_weak_deps=False \
+		--setopt=tsflags=nodocs \
+		install "$@"
+	rc=$?
+	dnf -y --installroot="${rootfs}" clean all
+	clean_rc=$?
+	set -e
+
+	umount_dnf_rootfs
+
+	if [ "${rc}" -ne 0 ]; then
+		if [ "${allow_install_failure}" = 1 ]; then
+			echo "dnf install returned ${rc}; continuing with rootfs validation" >&2
+		else
+			return "${rc}"
+		fi
+	fi
+
+	if [ "${clean_rc}" -ne 0 ]; then
+		return "${clean_rc}"
+	fi
+}
+
 build_fedora_44() {
 	local repo_dir="${script_dir}/repos/fedora"
 	local packages=(
@@ -227,15 +285,52 @@ build_fedora_44() {
 		tcpdump
 	)
 
-	dnf -y \
-		--installroot="${rootfs}" \
-		--releasever=44 \
-		--setopt="reposdir=${repo_dir}" \
-		--setopt=install_weak_deps=False \
-		--setopt=tsflags=nodocs \
-		install "${packages[@]}"
+	build_dnf "${repo_dir}" 44 0 "${packages[@]}"
+}
 
-	dnf -y --installroot="${rootfs}" clean all
+build_alma_9() {
+	local repo_dir="${script_dir}/repos/alma"
+	local packages=(
+		bc
+		binutils
+		bison
+		ca-certificates
+		diffutils
+		elfutils-libelf-devel
+		findutils
+		flex
+		gawk
+		gcc
+		git
+		glibc-devel
+		grep
+		iperf3
+		iproute
+		iputils
+		jq
+		kernel
+		kernel-devel
+		kernel-headers
+		kmod
+		libnl3-devel
+		make
+		mbedtls-devel
+		nftables
+		openssl-devel
+		pkgconf-pkg-config
+		procps-ng
+		psmisc
+		python3
+		python3-jsonschema
+		python3-pyyaml
+		rsync
+		sed
+		systemd
+		systemd-udev
+		tcpdump
+	)
+
+	build_dnf "${repo_dir}" 9 1 "${packages[@]}"
 }
 
 case "${distro}" in
@@ -265,6 +360,9 @@ ubuntu-25.10)
 	;;
 fedora-44)
 	build_fedora_44
+	;;
+alma-9)
+	build_alma_9
 	;;
 esac
 

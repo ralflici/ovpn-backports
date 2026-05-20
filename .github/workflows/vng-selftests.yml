@@ -26,6 +26,7 @@ jobs:
           - ubuntu-24.04
           - ubuntu-25.10
           - fedora-44
+          - alma-9
 
     steps:
       - name: Checkout repository
@@ -50,6 +51,16 @@ jobs:
             virtiofsd \
             virtme-ng
 
+      - name: Checkout patched virtme-ng
+        if: matrix.distro == 'alma-9'
+        run: |
+          git clone \
+            --depth 1 \
+            --branch root-guesttools \
+            https://github.com/ralflici/virtme-ng.git \
+            "${RUNNER_TEMP}/virtme-ng"
+          git -C "${RUNNER_TEMP}/virtme-ng" rev-parse HEAD
+
       - name: Build ${{ matrix.distro }} rootfs
         run: |
           sudo ./ci/build-rootfs.sh \
@@ -62,7 +73,12 @@ jobs:
 
       - name: Run selftests in ${{ matrix.distro }}
         run: |
-          sudo ./ci/run-vng-selftests.sh \
+          if [ "${{ matrix.distro }}" = "alma-9" ]; then
+            vng="${RUNNER_TEMP}/virtme-ng/vng"
+          else
+            vng="$(command -v vng)"
+          fi
+          sudo env VNG="${vng}" ./ci/run-vng-selftests.sh \
             "${{ matrix.distro }}" \
             "${RUNNER_TEMP}/rootfs/${{ matrix.distro }}" \
             "${GITHUB_WORKSPACE}"
