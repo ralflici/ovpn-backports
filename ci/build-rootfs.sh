@@ -9,7 +9,7 @@ script_dir=$(unset CDPATH; cd -- "$(dirname -- "$0")" && pwd)
 . "${script_dir}/rootfs-common.sh"
 
 usage() {
-	echo "Usage: $0 <debian-10|debian-11|debian-12|debian-13|ubuntu-20.04|ubuntu-22.04|ubuntu-24.04|ubuntu-25.10|fedora-44|alma-9> <rootfs-dir>" >&2
+	echo "Usage: $0 <debian-10|debian-11|debian-12|debian-13|ubuntu-20.04|ubuntu-22.04|ubuntu-24.04|ubuntu-25.10|fedora-44|alma-8|alma-9|alma-10> <rootfs-dir>" >&2
 	exit 1
 }
 
@@ -24,7 +24,8 @@ if [ "${distro}" != "debian-10" ] && [ "${distro}" != "debian-11" ] &&
 	[ "${distro}" != "debian-12" ] && [ "${distro}" != "debian-13" ] &&
 	[ "${distro}" != "ubuntu-20.04" ] && [ "${distro}" != "ubuntu-22.04" ] &&
 	[ "${distro}" != "ubuntu-24.04" ] && [ "${distro}" != "ubuntu-25.10" ] &&
-	[ "${distro}" != "fedora-44" ] && [ "${distro}" != "alma-9" ]; then
+	[ "${distro}" != "fedora-44" ] && [ "${distro}" != "alma-8" ] &&
+	[ "${distro}" != "alma-9" ] && [ "${distro}" != "alma-10" ]; then
 	echo "Unsupported distro: ${distro}" >&2
 	usage
 fi
@@ -288,7 +289,8 @@ build_fedora_44() {
 	build_dnf "${repo_dir}" 44 0 "${packages[@]}"
 }
 
-build_alma_9() {
+build_alma() {
+	local releasever="$1"
 	local repo_dir="${script_dir}/repos/alma"
 	local packages=(
 		bc
@@ -330,7 +332,11 @@ build_alma_9() {
 		tcpdump
 	)
 
-	build_dnf "${repo_dir}" 9 1 "${packages[@]}"
+	if [ "${releasever}" = 8 ]; then
+		repo_dir="${script_dir}/repos/alma8"
+	fi
+
+	build_dnf "${repo_dir}" "${releasever}" 1 "${packages[@]}"
 }
 
 case "${distro}" in
@@ -361,8 +367,14 @@ ubuntu-25.10)
 fedora-44)
 	build_fedora_44
 	;;
+alma-8)
+	build_alma 8
+	;;
 alma-9)
-	build_alma_9
+	build_alma 9
+	;;
+alma-10)
+	build_alma 10
 	;;
 esac
 
