@@ -3,8 +3,13 @@
 
 set -euo pipefail
 
+script_dir=$(unset CDPATH; cd -- "$(dirname -- "$0")" && pwd)
+
+# shellcheck source=ci/rootfs-common.sh
+. "${script_dir}/rootfs-common.sh"
+
 usage() {
-	echo "Usage: $0 <debian-12|debian-13|ubuntu-20.04|ubuntu-22.04|ubuntu-24.04> <rootfs-dir>" >&2
+	echo "Usage: $0 <debian-12|debian-13|ubuntu-20.04|ubuntu-22.04|ubuntu-24.04|fedora-44> <rootfs-dir>" >&2
 	exit 1
 }
 
@@ -17,7 +22,7 @@ rootfs="$2"
 
 if [ "${distro}" != "debian-12" ] && [ "${distro}" != "debian-13" ] &&
 	[ "${distro}" != "ubuntu-20.04" ] && [ "${distro}" != "ubuntu-22.04" ] &&
-	[ "${distro}" != "ubuntu-24.04" ]; then
+	[ "${distro}" != "ubuntu-24.04" ] && [ "${distro}" != "fedora-44" ]; then
 	echo "Unsupported distro: ${distro}" >&2
 	usage
 fi
@@ -165,6 +170,56 @@ build_ubuntu() {
 		"deb http://security.ubuntu.com/ubuntu ${codename}-security main universe"
 }
 
+build_fedora_44() {
+	local repo_dir="${script_dir}/repos/fedora"
+	local packages=(
+		bc
+		binutils
+		bison
+		ca-certificates
+		diffutils
+		elfutils-libelf-devel
+		flex
+		gawk
+		gcc
+		git
+		glibc-devel
+		iperf3
+		iproute
+		iputils
+		jq
+		kernel
+		kernel-devel
+		kernel-headers
+		kmod
+		libnl3-devel
+		make
+		mbedtls-devel
+		nftables
+		openssl-devel
+		pkgconf-pkg-config
+		procps-ng
+		psmisc
+		python3
+		python3-jsonschema
+		python3-pyyaml
+		rsync
+		systemd
+		systemd-udev
+		tcpdump
+	)
+
+	dnf -y \
+		--installroot="${rootfs}" \
+		--releasever=44 \
+		--setopt="reposdir=${repo_dir}" \
+		--setopt=install_weak_deps=False \
+		--setopt=tsflags=nodocs \
+		install "${packages[@]}"
+
+	dnf -y --installroot="${rootfs}" clean all
+}
+
 case "${distro}" in
 debian-12)
 	build_debian_12
@@ -181,18 +236,21 @@ ubuntu-22.04)
 ubuntu-24.04)
 	build_ubuntu_2404
 	;;
+fedora-44)
+	build_fedora_44
+	;;
 esac
 
-if ! compgen -G "${rootfs}/boot/vmlinuz-*" >/dev/null; then
-	echo "No kernel image found in ${rootfs}/boot" >&2
+kernel=$(rootfs_find_kernel_image "${rootfs}")
+
+if [ -z "${kernel}" ]; then
+	echo "No kernel image found in ${rootfs}" >&2
 	exit 1
 fi
 
-kernel=$(find "${rootfs}/boot" -maxdepth 1 -type f -name 'vmlinuz-*' |
-	sort -V | tail -n1)
-kernel_release=${kernel##*/vmlinuz-}
+kernel_release=$(rootfs_kernel_release "${kernel}")
 
-if [ ! -d "${rootfs}/usr/src/linux-headers-${kernel_release}" ]; then
+if ! rootfs_has_kernel_headers "${rootfs}" "${kernel_release}"; then
 	echo "Missing headers for ${kernel_release}" >&2
 	exit 1
 fi

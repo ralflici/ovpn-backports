@@ -1,0 +1,14 @@
+# Used from Ubuntu GitHub runners, where Fedora repo files are not installed.
+[fedora]
+name=Fedora $releasever - $basearch
+baseurl=https://download.fedoraproject.org/pub/fedora/linux/releases/$releasever/Everything/$basearch/os/
+enabled=1
+gpgcheck=1
+gpgkey=https://fedoraproject.org/fedora.gpg
+
+[updates]
+name=Fedora $releasever - $basearch - Updates
+baseurl=https://download.fedoraproject.org/pub/fedora/linux/updates/$releasever/Everything/$basearch/
+enabled=1
+gpgcheck=1
+gpgkey=https://fedoraproject.org/fedora.gpg

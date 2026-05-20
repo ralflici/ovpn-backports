@@ -3,8 +3,13 @@
 
 set -euo pipefail
 
+script_dir=$(unset CDPATH; cd -- "$(dirname -- "$0")" && pwd)
+
+# shellcheck source=ci/rootfs-common.sh
+. "${script_dir}/rootfs-common.sh"
+
 usage() {
-	echo "Usage: $0 <debian-12|debian-13|ubuntu-20.04|ubuntu-22.04|ubuntu-24.04> <rootfs-dir> <repo-dir>" >&2
+	echo "Usage: $0 <debian-12|debian-13|ubuntu-20.04|ubuntu-22.04|ubuntu-24.04|fedora-44> <rootfs-dir> <repo-dir>" >&2
 	exit 1
 }
 
@@ -18,7 +23,7 @@ repo=$(realpath "$3")
 
 if [ "${distro}" != "debian-12" ] && [ "${distro}" != "debian-13" ] &&
 	[ "${distro}" != "ubuntu-20.04" ] && [ "${distro}" != "ubuntu-22.04" ] &&
-	[ "${distro}" != "ubuntu-24.04" ]; then
+	[ "${distro}" != "ubuntu-24.04" ] && [ "${distro}" != "fedora-44" ]; then
 	echo "Unsupported distro: ${distro}" >&2
 	usage
 fi
@@ -33,16 +38,16 @@ if [ ! -x "${repo}/ci/guest-run-selftests.sh" ]; then
 	exit 1
 fi
 
-kernel=$(find "${rootfs}/boot" -maxdepth 1 -type f -name 'vmlinuz-*' |
-	sort -V | tail -n1)
+kernel=$(rootfs_find_kernel_image "${rootfs}")
 
 if [ -z "${kernel}" ]; then
-	echo "No kernel image found in ${rootfs}/boot" >&2
+	echo "No kernel image found in ${rootfs}" >&2
 	exit 1
 fi
 
-kernel_release=${kernel##*/vmlinuz-}
-if [ ! -d "${rootfs}/usr/src/linux-headers-${kernel_release}" ]; then
+kernel_release=$(rootfs_kernel_release "${kernel}")
+
+if ! rootfs_has_kernel_headers "${rootfs}" "${kernel_release}"; then
 	echo "Missing headers for ${kernel_release}" >&2
 	exit 1
 fi

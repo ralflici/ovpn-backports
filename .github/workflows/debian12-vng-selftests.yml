@@ -22,6 +22,7 @@ jobs:
           - ubuntu-20.04
           - ubuntu-22.04
           - ubuntu-24.04
+          - fedora-44
 
     steps:
       - name: Checkout repository
@@ -35,6 +36,7 @@ jobs:
             ca-certificates \
             cpio \
             debian-archive-keyring \
+            dnf \
             git \
             make \
             mmdebstrap \
