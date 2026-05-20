@@ -63,6 +63,10 @@ fi
 if [ "${VNG_VERBOSE:-1}" = "1" ]; then
 	vng_args+=(--verbose)
 fi
+if [ "${distro}" = "debian-10" ]; then
+	echo "Using 9p rootfs for Debian 10"
+	vng_args+=(--force-9p)
+fi
 
 echo "Booting ${distro} with ${kernel_release}"
 
