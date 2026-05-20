@@ -9,7 +9,7 @@ script_dir=$(unset CDPATH; cd -- "$(dirname -- "$0")" && pwd)
 . "${script_dir}/rootfs-common.sh"
 
 usage() {
-	echo "Usage: $0 <debian-10|debian-11|debian-12|debian-13|ubuntu-20.04|ubuntu-22.04|ubuntu-24.04|fedora-44> <rootfs-dir>" >&2
+	echo "Usage: $0 <debian-10|debian-11|debian-12|debian-13|ubuntu-20.04|ubuntu-22.04|ubuntu-24.04|ubuntu-25.10|fedora-44> <rootfs-dir>" >&2
 	exit 1
 }
 
@@ -23,7 +23,8 @@ rootfs="$2"
 if [ "${distro}" != "debian-10" ] && [ "${distro}" != "debian-11" ] &&
 	[ "${distro}" != "debian-12" ] && [ "${distro}" != "debian-13" ] &&
 	[ "${distro}" != "ubuntu-20.04" ] && [ "${distro}" != "ubuntu-22.04" ] &&
-	[ "${distro}" != "ubuntu-24.04" ] && [ "${distro}" != "fedora-44" ]; then
+	[ "${distro}" != "ubuntu-24.04" ] && [ "${distro}" != "ubuntu-25.10" ] &&
+	[ "${distro}" != "fedora-44" ]; then
 	echo "Unsupported distro: ${distro}" >&2
 	usage
 fi
@@ -109,6 +110,7 @@ build_debian() {
 		"${packages[@]}"
 		linux-headers-amd64
 		linux-image-amd64
+		systemd-sysv
 	)
 	shift 4
 
@@ -143,6 +145,10 @@ build_ubuntu_2204() {
 
 build_ubuntu_2404() {
 	build_ubuntu noble
+}
+
+build_ubuntu_2510() {
+	build_ubuntu questing
 }
 
 build_ubuntu() {
@@ -253,6 +259,9 @@ ubuntu-22.04)
 	;;
 ubuntu-24.04)
 	build_ubuntu_2404
+	;;
+ubuntu-25.10)
+	build_ubuntu_2510
 	;;
 fedora-44)
 	build_fedora_44
