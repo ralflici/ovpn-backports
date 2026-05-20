@@ -33,7 +33,8 @@ fi
 trap 'rm -f "$selftests_log"; if [ -n "$python_path" ]; then rm -rf "$python_path"; fi' EXIT
 
 set +e
-OVPN_VERBOSE="${OVPN_VERBOSE:-1}" make run_tests 2>&1 | tee "$selftests_log"
+kselftest_override_timeout="${kselftest_override_timeout:-${KSELFTEST_TIMEOUT:-120}}" \
+	OVPN_VERBOSE="${OVPN_VERBOSE:-1}" make run_tests 2>&1 | tee "$selftests_log"
 selftests_rc="${PIPESTATUS[0]}"
 set -e
 
