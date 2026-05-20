@@ -4,7 +4,7 @@
 set -euo pipefail
 
 usage() {
-	echo "Usage: $0 <debian-12> <rootfs-dir> <repo-dir>" >&2
+	echo "Usage: $0 <debian-12|debian-13|ubuntu-20.04|ubuntu-24.04> <rootfs-dir> <repo-dir>" >&2
 	exit 1
 }
 
@@ -16,7 +16,8 @@ distro="$1"
 rootfs=$(realpath "$2")
 repo=$(realpath "$3")
 
-if [ "${distro}" != "debian-12" ]; then
+if [ "${distro}" != "debian-12" ] && [ "${distro}" != "debian-13" ] &&
+	[ "${distro}" != "ubuntu-20.04" ] && [ "${distro}" != "ubuntu-24.04" ]; then
 	echo "Unsupported distro: ${distro}" >&2
 	usage
 fi
@@ -52,6 +53,9 @@ else
 	echo "KVM unavailable, using QEMU emulation"
 	vng_args+=(--disable-kvm)
 fi
+if [ "${VNG_VERBOSE:-1}" = "1" ]; then
+	vng_args+=(--verbose)
+fi
 
 echo "Booting ${distro} with ${kernel_release}"
 
@@ -63,7 +67,6 @@ vng \
 	"${vng_args[@]}" \
 	--disable-microvm \
 	--force-initramfs \
-	--network user \
 	--cpus "${VNG_CPUS:-2}" \
 	--memory "${VNG_MEMORY:-4096M}" \
 	--rwdir "/repo=${repo}" \

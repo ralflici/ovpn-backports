@@ -21,4 +21,19 @@ git config --global --add safe.directory /repo
 make -j"$(nproc)"
 make -j"$(nproc)" selftests
 make install
-OVPN_VERBOSE=1 make run_tests
+
+selftests_log="$(mktemp)"
+trap 'rm -f "$selftests_log"' EXIT
+
+set +e
+OVPN_VERBOSE="${OVPN_VERBOSE:-1}" make run_tests 2>&1 | tee "$selftests_log"
+selftests_rc="${PIPESTATUS[0]}"
+set -e
+
+if [ "$selftests_rc" -ne 0 ]; then
+	exit "$selftests_rc"
+fi
+
+if grep -Eq '^[[:space:]#]*not ok [0-9]|# Totals:.*(fail|xpass|error):[1-9]' "$selftests_log"; then
+	exit 1
+fi

@@ -1,0 +1,18 @@
+diff --git a/tools/net/ynl/pyynl/cli.py b/tools/net/ynl/pyynl/cli.py
+index 248d2a2..4614e07 100755
+--- a/tools/net/ynl/pyynl/cli.py
++++ b/tools/net/ynl/pyynl/cli.py
+@@ -262,5 +262,12 @@ def main():
+                            action='store', nargs='?', type=int, metavar='INT',
+                            help="Length of buffers used for recv()")
+-    dbg_group.add_argument('--process-unknown', action=argparse.BooleanOptionalAction)
++    if hasattr(argparse, 'BooleanOptionalAction'):
++        dbg_group.add_argument('--process-unknown',
++                               action=argparse.BooleanOptionalAction)
++    else:
++        dbg_group.add_argument('--process-unknown', dest='process_unknown',
++                               action='store_const', const=True, default=None)
++        dbg_group.add_argument('--no-process-unknown', dest='process_unknown',
++                               action='store_const', const=False)
+ 
+     args = parser.parse_args()
