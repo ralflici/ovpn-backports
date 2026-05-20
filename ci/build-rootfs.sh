@@ -9,7 +9,7 @@ script_dir=$(unset CDPATH; cd -- "$(dirname -- "$0")" && pwd)
 . "${script_dir}/rootfs-common.sh"
 
 usage() {
-	echo "Usage: $0 <debian-12|debian-13|ubuntu-20.04|ubuntu-22.04|ubuntu-24.04|fedora-44> <rootfs-dir>" >&2
+	echo "Usage: $0 <debian-11|debian-12|debian-13|ubuntu-20.04|ubuntu-22.04|ubuntu-24.04|fedora-44> <rootfs-dir>" >&2
 	exit 1
 }
 
@@ -20,9 +20,10 @@ fi
 distro="$1"
 rootfs="$2"
 
-if [ "${distro}" != "debian-12" ] && [ "${distro}" != "debian-13" ] &&
-	[ "${distro}" != "ubuntu-20.04" ] && [ "${distro}" != "ubuntu-22.04" ] &&
-	[ "${distro}" != "ubuntu-24.04" ] && [ "${distro}" != "fedora-44" ]; then
+if [ "${distro}" != "debian-11" ] && [ "${distro}" != "debian-12" ] &&
+	[ "${distro}" != "debian-13" ] && [ "${distro}" != "ubuntu-20.04" ] &&
+	[ "${distro}" != "ubuntu-22.04" ] && [ "${distro}" != "ubuntu-24.04" ] &&
+	[ "${distro}" != "fedora-44" ]; then
 	echo "Unsupported distro: ${distro}" >&2
 	usage
 fi
@@ -65,35 +66,20 @@ packages=(
 	tcpdump
 )
 
+build_debian_11() {
+	build_debian bullseye
+}
+
 build_debian_12() {
-	local debian_keyring include
-	local debian_packages=(
-		"${packages[@]}"
-		linux-headers-amd64
-		linux-image-amd64
-	)
-
-	include=$(IFS=,; echo "${debian_packages[*]}")
-
-	debian_keyring="/usr/share/keyrings/debian-archive-keyring.gpg"
-	if [ ! -r "${debian_keyring}" ]; then
-		echo "Missing Debian archive keyring: ${debian_keyring}" >&2
-		echo "Install debian-archive-keyring on the host." >&2
-		exit 1
-	fi
-
-	mmdebstrap \
-		--variant=minbase \
-		--keyring="${debian_keyring}" \
-		--include="${include}" \
-		bookworm \
-		"${rootfs}" \
-		"deb http://deb.debian.org/debian bookworm main" \
-		"deb http://deb.debian.org/debian bookworm-updates main" \
-		"deb http://security.debian.org/debian-security bookworm-security main"
+	build_debian bookworm
 }
 
 build_debian_13() {
+	build_debian trixie
+}
+
+build_debian() {
+	local codename="$1"
 	local debian_keyring include
 	local debian_packages=(
 		"${packages[@]}"
@@ -114,11 +100,11 @@ build_debian_13() {
 		--variant=minbase \
 		--keyring="${debian_keyring}" \
 		--include="${include}" \
-		trixie \
+		"${codename}" \
 		"${rootfs}" \
-		"deb http://deb.debian.org/debian trixie main" \
-		"deb http://deb.debian.org/debian trixie-updates main" \
-		"deb http://security.debian.org/debian-security trixie-security main"
+		"deb http://deb.debian.org/debian ${codename} main" \
+		"deb http://deb.debian.org/debian ${codename}-updates main" \
+		"deb http://security.debian.org/debian-security ${codename}-security main"
 }
 
 build_ubuntu_2004() {
@@ -221,6 +207,9 @@ build_fedora_44() {
 }
 
 case "${distro}" in
+debian-11)
+	build_debian_11
+	;;
 debian-12)
 	build_debian_12
 	;;
