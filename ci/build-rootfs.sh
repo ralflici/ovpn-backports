@@ -4,7 +4,7 @@
 set -euo pipefail
 
 usage() {
-	echo "Usage: $0 <debian-12|debian-13|ubuntu-20.04|ubuntu-24.04> <rootfs-dir>" >&2
+	echo "Usage: $0 <debian-12|debian-13|ubuntu-20.04|ubuntu-22.04|ubuntu-24.04> <rootfs-dir>" >&2
 	exit 1
 }
 
@@ -16,7 +16,8 @@ distro="$1"
 rootfs="$2"
 
 if [ "${distro}" != "debian-12" ] && [ "${distro}" != "debian-13" ] &&
-	[ "${distro}" != "ubuntu-20.04" ] && [ "${distro}" != "ubuntu-24.04" ]; then
+	[ "${distro}" != "ubuntu-20.04" ] && [ "${distro}" != "ubuntu-22.04" ] &&
+	[ "${distro}" != "ubuntu-24.04" ]; then
 	echo "Unsupported distro: ${distro}" >&2
 	usage
 fi
@@ -116,38 +117,20 @@ build_debian_13() {
 }
 
 build_ubuntu_2004() {
-	local include ubuntu_keyring
-	local ubuntu_packages=(
-		"${packages[@]}"
-		busybox-static
-		linux-headers-generic
-		linux-image-generic
-		python3.9
-		systemd-sysv
-		udev
-	)
+	build_ubuntu focal python3.9
+}
 
-	include=$(IFS=,; echo "${ubuntu_packages[*]}")
-
-	ubuntu_keyring="/usr/share/keyrings/ubuntu-archive-keyring.gpg"
-	if [ ! -r "${ubuntu_keyring}" ]; then
-		echo "Missing Ubuntu archive keyring: ${ubuntu_keyring}" >&2
-		echo "Install ubuntu-keyring on the host." >&2
-		exit 1
-	fi
-
-	mmdebstrap \
-		--variant=minbase \
-		--keyring="${ubuntu_keyring}" \
-		--include="${include}" \
-		focal \
-		"${rootfs}" \
-		"deb http://archive.ubuntu.com/ubuntu focal main universe" \
-		"deb http://archive.ubuntu.com/ubuntu focal-updates main universe" \
-		"deb http://security.ubuntu.com/ubuntu focal-security main universe"
+build_ubuntu_2204() {
+	build_ubuntu jammy
 }
 
 build_ubuntu_2404() {
+	build_ubuntu noble
+}
+
+build_ubuntu() {
+	local codename="$1"
+	local extra_python="${2:-}"
 	local include ubuntu_keyring
 	local ubuntu_packages=(
 		"${packages[@]}"
@@ -157,6 +140,10 @@ build_ubuntu_2404() {
 		systemd-sysv
 		udev
 	)
+
+	if [ -n "${extra_python}" ]; then
+		ubuntu_packages+=("${extra_python}")
+	fi
 
 	include=$(IFS=,; echo "${ubuntu_packages[*]}")
 
@@ -171,11 +158,11 @@ build_ubuntu_2404() {
 		--variant=minbase \
 		--keyring="${ubuntu_keyring}" \
 		--include="${include}" \
-		noble \
+		"${codename}" \
 		"${rootfs}" \
-		"deb http://archive.ubuntu.com/ubuntu noble main universe" \
-		"deb http://archive.ubuntu.com/ubuntu noble-updates main universe" \
-		"deb http://security.ubuntu.com/ubuntu noble-security main universe"
+		"deb http://archive.ubuntu.com/ubuntu ${codename} main universe" \
+		"deb http://archive.ubuntu.com/ubuntu ${codename}-updates main universe" \
+		"deb http://security.ubuntu.com/ubuntu ${codename}-security main universe"
 }
 
 case "${distro}" in
@@ -187,6 +174,9 @@ debian-13)
 	;;
 ubuntu-20.04)
 	build_ubuntu_2004
+	;;
+ubuntu-22.04)
+	build_ubuntu_2204
 	;;
 ubuntu-24.04)
 	build_ubuntu_2404
