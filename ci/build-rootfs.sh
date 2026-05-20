@@ -4,7 +4,7 @@
 set -euo pipefail
 
 usage() {
-	echo "Usage: $0 <debian-12|ubuntu-24.04> <rootfs-dir>" >&2
+	echo "Usage: $0 <debian-12|debian-13|ubuntu-20.04|ubuntu-24.04> <rootfs-dir>" >&2
 	exit 1
 }
 
@@ -15,7 +15,8 @@ fi
 distro="$1"
 rootfs="$2"
 
-if [ "${distro}" != "debian-12" ] && [ "${distro}" != "ubuntu-24.04" ]; then
+if [ "${distro}" != "debian-12" ] && [ "${distro}" != "debian-13" ] &&
+	[ "${distro}" != "ubuntu-20.04" ] && [ "${distro}" != "ubuntu-24.04" ]; then
 	echo "Unsupported distro: ${distro}" >&2
 	usage
 fi
@@ -86,6 +87,66 @@ build_debian_12() {
 		"deb http://security.debian.org/debian-security bookworm-security main"
 }
 
+build_debian_13() {
+	local debian_keyring include
+	local debian_packages=(
+		"${packages[@]}"
+		linux-headers-amd64
+		linux-image-amd64
+	)
+
+	include=$(IFS=,; echo "${debian_packages[*]}")
+
+	debian_keyring="/usr/share/keyrings/debian-archive-keyring.gpg"
+	if [ ! -r "${debian_keyring}" ]; then
+		echo "Missing Debian archive keyring: ${debian_keyring}" >&2
+		echo "Install debian-archive-keyring on the host." >&2
+		exit 1
+	fi
+
+	mmdebstrap \
+		--variant=minbase \
+		--keyring="${debian_keyring}" \
+		--include="${include}" \
+		trixie \
+		"${rootfs}" \
+		"deb http://deb.debian.org/debian trixie main" \
+		"deb http://deb.debian.org/debian trixie-updates main" \
+		"deb http://security.debian.org/debian-security trixie-security main"
+}
+
+build_ubuntu_2004() {
+	local include ubuntu_keyring
+	local ubuntu_packages=(
+		"${packages[@]}"
+		busybox-static
+		linux-headers-generic
+		linux-image-generic
+		python3.9
+		systemd-sysv
+		udev
+	)
+
+	include=$(IFS=,; echo "${ubuntu_packages[*]}")
+
+	ubuntu_keyring="/usr/share/keyrings/ubuntu-archive-keyring.gpg"
+	if [ ! -r "${ubuntu_keyring}" ]; then
+		echo "Missing Ubuntu archive keyring: ${ubuntu_keyring}" >&2
+		echo "Install ubuntu-keyring on the host." >&2
+		exit 1
+	fi
+
+	mmdebstrap \
+		--variant=minbase \
+		--keyring="${ubuntu_keyring}" \
+		--include="${include}" \
+		focal \
+		"${rootfs}" \
+		"deb http://archive.ubuntu.com/ubuntu focal main universe" \
+		"deb http://archive.ubuntu.com/ubuntu focal-updates main universe" \
+		"deb http://security.ubuntu.com/ubuntu focal-security main universe"
+}
+
 build_ubuntu_2404() {
 	local include ubuntu_keyring
 	local ubuntu_packages=(
@@ -120,6 +181,12 @@ build_ubuntu_2404() {
 case "${distro}" in
 debian-12)
 	build_debian_12
+	;;
+debian-13)
+	build_debian_13
+	;;
+ubuntu-20.04)
+	build_ubuntu_2004
 	;;
 ubuntu-24.04)
 	build_ubuntu_2404
