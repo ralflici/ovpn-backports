@@ -9,7 +9,7 @@ script_dir=$(unset CDPATH; cd -- "$(dirname -- "$0")" && pwd)
 . "${script_dir}/rootfs-common.sh"
 
 usage() {
-	echo "Usage: $0 <debian-11|debian-12|debian-13|ubuntu-20.04|ubuntu-22.04|ubuntu-24.04|fedora-44> <rootfs-dir>" >&2
+	echo "Usage: $0 <debian-10|debian-11|debian-12|debian-13|ubuntu-20.04|ubuntu-22.04|ubuntu-24.04|fedora-44> <rootfs-dir>" >&2
 	exit 1
 }
 
@@ -20,10 +20,10 @@ fi
 distro="$1"
 rootfs="$2"
 
-if [ "${distro}" != "debian-11" ] && [ "${distro}" != "debian-12" ] &&
-	[ "${distro}" != "debian-13" ] && [ "${distro}" != "ubuntu-20.04" ] &&
-	[ "${distro}" != "ubuntu-22.04" ] && [ "${distro}" != "ubuntu-24.04" ] &&
-	[ "${distro}" != "fedora-44" ]; then
+if [ "${distro}" != "debian-10" ] && [ "${distro}" != "debian-11" ] &&
+	[ "${distro}" != "debian-12" ] && [ "${distro}" != "debian-13" ] &&
+	[ "${distro}" != "ubuntu-20.04" ] && [ "${distro}" != "ubuntu-22.04" ] &&
+	[ "${distro}" != "ubuntu-24.04" ] && [ "${distro}" != "fedora-44" ]; then
 	echo "Unsupported distro: ${distro}" >&2
 	usage
 fi
@@ -66,26 +66,52 @@ packages=(
 	tcpdump
 )
 
+build_debian_10() {
+	build_debian \
+		buster \
+		http://archive.debian.org/debian \
+		http://archive.debian.org/debian-security \
+		buster/updates \
+		--aptopt='Acquire::Check-Valid-Until "false"'
+}
+
 build_debian_11() {
-	build_debian bullseye
+	build_debian \
+		bullseye \
+		http://deb.debian.org/debian \
+		http://security.debian.org/debian-security \
+		bullseye-security
 }
 
 build_debian_12() {
-	build_debian bookworm
+	build_debian \
+		bookworm \
+		http://deb.debian.org/debian \
+		http://security.debian.org/debian-security \
+		bookworm-security
 }
 
 build_debian_13() {
-	build_debian trixie
+	build_debian \
+		trixie \
+		http://deb.debian.org/debian \
+		http://security.debian.org/debian-security \
+		trixie-security
 }
 
 build_debian() {
 	local codename="$1"
+	local mirror="$2"
+	local security_mirror="$3"
+	local security_suite="$4"
 	local debian_keyring include
 	local debian_packages=(
 		"${packages[@]}"
 		linux-headers-amd64
 		linux-image-amd64
+		systemd-sysv
 	)
+	shift 4
 
 	include=$(IFS=,; echo "${debian_packages[*]}")
 
@@ -97,14 +123,15 @@ build_debian() {
 	fi
 
 	mmdebstrap \
+		"$@" \
 		--variant=minbase \
 		--keyring="${debian_keyring}" \
 		--include="${include}" \
 		"${codename}" \
 		"${rootfs}" \
-		"deb http://deb.debian.org/debian ${codename} main" \
-		"deb http://deb.debian.org/debian ${codename}-updates main" \
-		"deb http://security.debian.org/debian-security ${codename}-security main"
+		"deb ${mirror} ${codename} main" \
+		"deb ${mirror} ${codename}-updates main" \
+		"deb ${security_mirror} ${security_suite} main"
 }
 
 build_ubuntu_2004() {
@@ -207,6 +234,9 @@ build_fedora_44() {
 }
 
 case "${distro}" in
+debian-10)
+	build_debian_10
+	;;
 debian-11)
 	build_debian_11
 	;;
