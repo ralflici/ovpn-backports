@@ -9,7 +9,7 @@ script_dir=$(unset CDPATH; cd -- "$(dirname -- "$0")" && pwd)
 . "${script_dir}/rootfs-common.sh"
 
 usage() {
-	echo "Usage: $0 <debian-10|debian-11|debian-12|debian-13|ubuntu-20.04|ubuntu-22.04|ubuntu-24.04|ubuntu-25.10|fedora-44|alma-8|alma-9|alma-10> <rootfs-dir>" >&2
+	echo "Usage: $0 <debian-10|debian-11|debian-12|debian-13|ubuntu-20.04|ubuntu-22.04|ubuntu-24.04|ubuntu-25.10|fedora-44|alma-8|alma-9|alma-10|opensuse-leap-15.6> <rootfs-dir>" >&2
 	exit 1
 }
 
@@ -25,7 +25,8 @@ if [ "${distro}" != "debian-10" ] && [ "${distro}" != "debian-11" ] &&
 	[ "${distro}" != "ubuntu-20.04" ] && [ "${distro}" != "ubuntu-22.04" ] &&
 	[ "${distro}" != "ubuntu-24.04" ] && [ "${distro}" != "ubuntu-25.10" ] &&
 	[ "${distro}" != "fedora-44" ] && [ "${distro}" != "alma-8" ] &&
-	[ "${distro}" != "alma-9" ] && [ "${distro}" != "alma-10" ]; then
+	[ "${distro}" != "alma-9" ] && [ "${distro}" != "alma-10" ] &&
+	[ "${distro}" != "opensuse-leap-15.6" ]; then
 	echo "Unsupported distro: ${distro}" >&2
 	usage
 fi
@@ -339,6 +340,54 @@ build_alma() {
 	build_dnf "${repo_dir}" "${releasever}" 1 "${packages[@]}"
 }
 
+build_opensuse_leap() {
+	local releasever="$1"
+	local repo_dir="${script_dir}/repos/opensuse-leap"
+	local packages=(
+		bc
+		binutils
+		bison
+		ca-certificates
+		diffutils
+		findutils
+		flex
+		gawk
+		gcc
+		git
+		glibc-devel
+		grep
+		iperf
+		iproute2
+		iputils
+		jq
+		kernel-default
+		kernel-default-devel
+		kernel-devel
+		kmod
+		libnl3-devel
+		make
+		mbedtls-devel
+		nftables
+		openssl-devel
+		pkg-config
+		procps
+		psmisc
+		python3
+		python3-jsonschema
+		python3-PyYAML
+		rsync
+		sed
+		systemd
+		tcpdump
+		udev
+	)
+
+	build_dnf "${repo_dir}" "${releasever}" 1 "${packages[@]}"
+
+	echo "allow_unsupported_modules 1" \
+		> "${rootfs}/etc/modprobe.d/10-unsupported-modules.conf"
+}
+
 case "${distro}" in
 debian-10)
 	build_debian_10
@@ -375,6 +424,9 @@ alma-9)
 	;;
 alma-10)
 	build_alma 10
+	;;
+opensuse-leap-15.6)
+	build_opensuse_leap 15.6
 	;;
 esac
 

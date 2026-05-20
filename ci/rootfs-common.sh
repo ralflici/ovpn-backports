@@ -44,7 +44,26 @@ rootfs_kernel_release() {
 rootfs_has_kernel_headers() {
 	local rootfs="$1"
 	local kernel_release="$2"
+	local build="${rootfs}/lib/modules/${kernel_release}/build"
+	local build_target
 
-	[ -d "${rootfs}/usr/src/linux-headers-${kernel_release}" ] ||
-		[ -d "${rootfs}/usr/src/kernels/${kernel_release}" ]
+	if [ -d "${rootfs}/usr/src/linux-headers-${kernel_release}" ] ||
+		[ -d "${rootfs}/usr/src/kernels/${kernel_release}" ] ||
+		[ -e "${build}" ]; then
+		return 0
+	fi
+
+	if [ ! -L "${build}" ]; then
+		return 1
+	fi
+
+	build_target=$(readlink "${build}")
+	case "${build_target}" in
+	/*)
+		[ -e "${rootfs}${build_target}" ]
+		;;
+	*)
+		[ -e "$(dirname -- "${build}")/${build_target}" ]
+		;;
+	esac
 }
