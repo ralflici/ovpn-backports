@@ -211,6 +211,115 @@ build_ubuntu() {
 		"deb http://security.ubuntu.com/ubuntu ${codename}-security main universe"
 }
 
+mount_dnf_rootfs() {
+	mkdir -p \
+		"${rootfs}/dev" \
+		"${rootfs}/proc" \
+		"${rootfs}/sys" \
+		"${rootfs}/run"
+
+	# /dev is recursive because package scriptlets may need devices under
+	# submounts such as /dev/pts.
+	mount --rbind /dev "${rootfs}/dev"
+	mount --make-rslave "${rootfs}/dev"
+	# procfs and sysfs let kernel package scriptlets query the running host.
+	mount -t proc proc "${rootfs}/proc"
+	mount -t sysfs sysfs "${rootfs}/sys"
+	# Some package scriptlets expect a writable runtime directory.
+	mount -t tmpfs tmpfs "${rootfs}/run"
+}
+
+umount_dnf_rootfs() {
+	umount -R "${rootfs}/run" 2>/dev/null || true
+	umount -R "${rootfs}/sys" 2>/dev/null || true
+	umount -R "${rootfs}/proc" 2>/dev/null || true
+	umount -R "${rootfs}/dev" 2>/dev/null || true
+}
+
+build_dnf() {
+	local repo_dir="$1"
+	local releasever="$2"
+	local allow_install_failure="$3"
+	local rc clean_rc
+	shift 3
+
+	# RPM kernel package scriptlets run inside the installroot and expect
+	# procfs, sysfs, devtmpfs, and /run to exist.
+	mount_dnf_rootfs
+
+	set +e
+	dnf -y \
+		--installroot="${rootfs}" \
+		--releasever="${releasever}" \
+		--setopt="reposdir=${repo_dir}" \
+		--setopt=install_weak_deps=False \
+		--setopt=tsflags=nodocs \
+		install "$@"
+	rc=$?
+	dnf -y --installroot="${rootfs}" clean all
+	clean_rc=$?
+	set -e
+
+	umount_dnf_rootfs
+
+	if [ "${rc}" -ne 0 ]; then
+		if [ "${allow_install_failure}" = 1 ]; then
+			# Some kernel post-install scripts still fail in a minimal chroot
+			# after installing the files we need. The rootfs validation below
+			# decides whether the result is usable.
+			echo "dnf install returned ${rc}; continuing with rootfs validation" >&2
+		else
+			return "${rc}"
+		fi
+	fi
+
+	if [ "${clean_rc}" -ne 0 ]; then
+		return "${clean_rc}"
+	fi
+}
+
+build_fedora_44() {
+	local repo_dir="${script_dir}/repos/fedora"
+	local packages=(
+		bc
+		binutils
+		bison
+		ca-certificates
+		diffutils
+		elfutils-libelf-devel
+		flex
+		gawk
+		gcc
+		git
+		glibc-devel
+		iperf3
+		iproute
+		iputils
+		jq
+		kernel
+		kernel-devel
+		kernel-headers
+		kmod
+		libnl3-devel
+		make
+		mbedtls-devel
+		nftables
+		openssl-devel
+		pkgconf-pkg-config
+		procps-ng
+		psmisc
+		python3
+		python3-jsonschema
+		python3-pyyaml
+		rsync
+		systemd
+		systemd-udev
+		tcpdump
+	)
+
+	build_dnf "${repo_dir}" 44 0 "${packages[@]}"
+}
+
 case "${distro}" in
 debian-10)
 	build_debian_10
@@ -235,6 +344,9 @@ ubuntu-24.04)
 	;;
 ubuntu-25.10)
 	build_ubuntu_2510
+	;;
+fedora-44)
+	build_fedora_44
 	;;
 *)
 	echo "Unsupported target: ${distro}" >&2

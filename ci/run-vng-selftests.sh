@@ -29,7 +29,7 @@ debian-10)
 	force_9p=1
 	echo "${distro} requires 9p rootfs"
 	;;
-debian-11|debian-12|debian-13|ubuntu-20.04|ubuntu-22.04|ubuntu-24.04|ubuntu-25.10)
+debian-11|debian-12|debian-13|ubuntu-20.04|ubuntu-22.04|ubuntu-24.04|ubuntu-25.10|fedora-44)
 	;;
 *)
 	echo "Unsupported target: ${distro}" >&2
