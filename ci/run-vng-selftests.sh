@@ -29,7 +29,7 @@ debian-10)
 	force_9p=1
 	echo "${distro} requires 9p rootfs"
 	;;
-debian-11|debian-12|debian-13|ubuntu-20.04|ubuntu-22.04|ubuntu-24.04|ubuntu-25.10|fedora-44)
+debian-11|debian-12|debian-13|ubuntu-20.04|ubuntu-22.04|ubuntu-24.04|ubuntu-25.10|fedora-44|opensuse-leap-15.6|opensuse-leap-16.0|opensuse-tumbleweed)
 	;;
 alma-8|alma-9|alma-10)
 	root_guesttools=1

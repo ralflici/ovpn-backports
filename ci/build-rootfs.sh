@@ -370,6 +370,82 @@ build_alma() {
 	build_dnf "${repo_dir}" "${releasever}" 1 "${packages[@]}"
 }
 
+build_opensuse_leap() {
+	local releasever="$1"
+	local repo_dir
+
+	# leap 15 has "update-oss" repo but leap 16 doesn't so we have to use
+	# different files to avoid 404
+	case "${releasever}" in
+	15.*)
+		repo_dir="${script_dir}/repos/opensuse-leap15"
+		;;
+	16.*)
+		repo_dir="${script_dir}/repos/opensuse-leap16"
+		;;
+	*)
+		echo "Unsupported openSUSE Leap release: ${releasever}" >&2
+		exit 1
+		;;
+	esac
+
+	build_opensuse "${repo_dir}" "${releasever}"
+}
+
+build_opensuse_tumbleweed() {
+	local repo_dir="${script_dir}/repos/opensuse-tumbleweed"
+	build_opensuse "${repo_dir}" tumbleweed
+}
+
+build_opensuse() {
+	local repo_dir="$1"
+	local releasever="$2"
+	local packages=(
+		bc
+		binutils
+		bison
+		ca-certificates
+		diffutils
+		findutils
+		flex
+		gawk
+		gcc
+		git
+		glibc-devel
+		grep
+		iperf
+		iproute2
+		iputils
+		jq
+		kernel-default
+		kernel-default-devel
+		kernel-devel
+		kmod
+		libnl3-devel
+		make
+		mbedtls-devel
+		nftables
+		openssl-devel
+		pkg-config
+		procps
+		psmisc
+		python3
+		python3-jsonschema
+		python3-PyYAML
+		rsync
+		sed
+		systemd
+		tcpdump
+		udev
+	)
+
+	build_dnf "${repo_dir}" "${releasever}" 1 "${packages[@]}"
+
+	# leap marks non-SUSE modules unsupported unless this policy knob is set
+	echo "allow_unsupported_modules 1" \
+		> "${rootfs}/etc/modprobe.d/10-unsupported-modules.conf"
+}
+
 case "${distro}" in
 debian-10)
 	build_debian_10
@@ -406,6 +482,15 @@ alma-9)
 	;;
 alma-10)
 	build_alma 10
+	;;
+opensuse-leap-15.6)
+	build_opensuse_leap 15.6
+	;;
+opensuse-leap-16.0)
+	build_opensuse_leap 16.0
+	;;
+opensuse-tumbleweed)
+	build_opensuse_tumbleweed
 	;;
 *)
 	echo "Unsupported target: ${distro}" >&2
