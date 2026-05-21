@@ -31,6 +31,9 @@ debian-10)
 	;;
 debian-11|debian-12|debian-13|ubuntu-20.04|ubuntu-22.04|ubuntu-24.04|ubuntu-25.10|fedora-44)
 	;;
+alma-8|alma-9|alma-10)
+	root_guesttools=1
+	;;
 *)
 	echo "Unsupported target: ${distro}" >&2
 	usage

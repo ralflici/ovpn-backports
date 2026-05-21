@@ -320,6 +320,56 @@ build_fedora_44() {
 	build_dnf "${repo_dir}" 44 0 "${packages[@]}"
 }
 
+build_alma() {
+	local releasever="$1"
+	local repo_dir="${script_dir}/repos/alma"
+	local packages=(
+		bc
+		binutils
+		bison
+		ca-certificates
+		diffutils
+		elfutils-libelf-devel
+		findutils
+		flex
+		gawk
+		gcc
+		git
+		glibc-devel
+		grep
+		iperf3
+		iproute
+		iputils
+		jq
+		kernel
+		kernel-devel
+		kernel-headers
+		kmod
+		libnl3-devel
+		make
+		mbedtls-devel
+		nftables
+		openssl-devel
+		pkgconf-pkg-config
+		procps-ng
+		psmisc
+		python3
+		python3-jsonschema
+		python3-pyyaml
+		rsync
+		sed
+		systemd
+		systemd-udev
+		tcpdump
+	)
+
+	if [ "${releasever}" = 8 ]; then
+		repo_dir="${script_dir}/repos/alma8"
+	fi
+
+	build_dnf "${repo_dir}" "${releasever}" 1 "${packages[@]}"
+}
+
 case "${distro}" in
 debian-10)
 	build_debian_10
@@ -347,6 +397,15 @@ ubuntu-25.10)
 	;;
 fedora-44)
 	build_fedora_44
+	;;
+alma-8)
+	build_alma 8
+	;;
+alma-9)
+	build_alma 9
+	;;
+alma-10)
+	build_alma 10
 	;;
 *)
 	echo "Unsupported target: ${distro}" >&2
