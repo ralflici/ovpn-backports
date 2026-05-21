@@ -30,11 +30,12 @@ jobs:
           - alma-9
           - alma-10
           - opensuse-leap-15.6
+          - opensuse-leap-16.0
           - opensuse-tumbleweed
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install host dependencies
         run: |
@@ -55,6 +56,8 @@ jobs:
             virtiofsd \
             virtme-ng
 
+      # RHEL kernels don't support 9p but vng mounts its guesttools using 9p so
+      # we have to use a patched version of vng that avoid 9p completely
       - name: Checkout patched virtme-ng
         if: startsWith(matrix.distro, 'alma-')
         run: |

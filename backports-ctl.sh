@@ -66,21 +66,21 @@ get_ovpn() {
 	import_tests=$2
 
 	if [[ ! -d $KERNEL_DIR ]]; then
-		git clone --depth 1 $KERNEL_REPO_URL $KERNEL_DIR
+		git clone --depth 1 "$KERNEL_REPO_URL" "$KERNEL_DIR"
 	fi
 
 	echo "Checking out commit $KERNEL_COMMIT"
-	git -C $KERNEL_DIR fetch --depth 1 origin $KERNEL_COMMIT
-	git -C $KERNEL_DIR reset --hard $KERNEL_COMMIT
+	git -C "$KERNEL_DIR" fetch --depth 1 origin "$KERNEL_COMMIT"
+	git -C "$KERNEL_DIR" reset --hard "$KERNEL_COMMIT"
 
 	echo "Extracting ovpn source files"
 	rm -fr "$PWD/drivers/" "$PWD/include/"
 	clean_ovpn_selftests
-	mkdir -p $PWD/drivers/net $PWD/include/uapi/linux
-	cp -r $KERNEL_DIR/drivers/net/ovpn $PWD/drivers/net/
-	cp $KERNEL_DIR/include/uapi/linux/ovpn.h $PWD/include/uapi/linux/ovpn.h
+	mkdir -p "$PWD/drivers/net" "$PWD/include/uapi/linux"
+	cp -r "$KERNEL_DIR/drivers/net/ovpn" "$PWD/drivers/net/"
+	cp "$KERNEL_DIR/include/uapi/linux/ovpn.h" "$PWD/include/uapi/linux/ovpn.h"
 
-	for patch in $PWD/compat-patches/sources/*.patch; do
+	for patch in "$PWD"/compat-patches/sources/*.patch; do
 		git apply --verbose "$patch"
 	done
 
@@ -100,10 +100,10 @@ get_ovpn() {
 		echo "Setting version information"
 
 		# Name of the repository from where the ovpn sources were extracted.
-		tree=$(basename $(git -C $KERNEL_DIR config --get remote.origin.url) | cut -d. -f1)
+		tree=$(basename "$(git -C "$KERNEL_DIR" config --get remote.origin.url)" | cut -d. -f1)
 
 		# Version of the kernel from where the ovpn sources were extracted.
-		kernel_version=$(make -s -C $KERNEL_DIR kernelversion)
+		kernel_version=$(make -s -C "$KERNEL_DIR" kernelversion)
 
 		# This indirectly indicates also the ovpn-net-next commit used for
 		# generating the backports.
@@ -120,7 +120,7 @@ EOF
 
 	if [ "$keep" -eq "0" ] ; then
 		echo "Cleaning up"
-		rm -rf $KERNEL_DIR
+		rm -rf "$KERNEL_DIR"
 	fi
 }
 
@@ -130,7 +130,7 @@ print_usage() {
 	exit 1
 }
 
-if ! git --version 2>&1 >/dev/null; then
+if ! git --version >/dev/null 2>&1; then
 	echo "git could not be found"
 	exit 1
 fi
@@ -138,7 +138,7 @@ fi
 command="$1"
 if [[ -z $command || $command = "help" ]]; then
 	print_usage
-elif [ $command = "get-ovpn" ]; then
+elif [ "$command" = "get-ovpn" ]; then
 	shift
 	keep=0
 	import_tests=0
@@ -157,8 +157,8 @@ elif [ $command = "get-ovpn" ]; then
 		shift
 	done
 	get_ovpn "$keep" "$import_tests"
-elif [ $command = "clean" ]; then
-	read -p "Are you sure you want to restore the repository to its default state? [y/N]" clean && [[ "$clean" = "y" || "$clean" = "Y" ]] && git clean -fdx && git reset --hard
+elif [ "$command" = "clean" ]; then
+	read -r -p "Are you sure you want to restore the repository to its default state? [y/N]" clean && [[ "$clean" = "y" || "$clean" = "Y" ]] && git clean -fdx && git reset --hard
 else
 	echo "Unknown command $command"
 	print_usage

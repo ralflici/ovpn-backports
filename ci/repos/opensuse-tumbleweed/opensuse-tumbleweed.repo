@@ -1,4 +1,7 @@
 # Used from Ubuntu GitHub runners, where openSUSE repo files are not installed.
+# Based on the openSUSE Tumbleweed repo index:
+# https://github.com/openSUSE/openSUSE-repos/raw/refs/heads/main/opensuse-tumbleweed-repoindex.xml
+#
 # DNF cannot verify package signatures before the openSUSE RPM keys are
 # installed in the rootfs, so verify repository metadata during bootstrap.
 [repo-oss]

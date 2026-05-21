@@ -1,4 +1,7 @@
 # Used from Ubuntu GitHub runners, where AlmaLinux repo files are not installed.
+# Based on AlmaLinux release repo definitions:
+# https://git.almalinux.org/rpms/almalinux-release
+# AlmaLinux 9/10 use CRB; AlmaLinux 8 uses PowerTools instead.
 [baseos]
 name=AlmaLinux $releasever - BaseOS
 baseurl=https://repo.almalinux.org/almalinux/$releasever/BaseOS/$basearch/os/

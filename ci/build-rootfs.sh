@@ -9,7 +9,7 @@ script_dir=$(unset CDPATH; cd -- "$(dirname -- "$0")" && pwd)
 . "${script_dir}/rootfs-common.sh"
 
 usage() {
-	echo "Usage: $0 <debian-10|debian-11|debian-12|debian-13|ubuntu-20.04|ubuntu-22.04|ubuntu-24.04|ubuntu-25.10|fedora-44|alma-8|alma-9|alma-10|opensuse-leap-15.6|opensuse-tumbleweed> <rootfs-dir>" >&2
+	echo "Usage: $0 <target> <rootfs-dir>" >&2
 	exit 1
 }
 
@@ -20,18 +20,6 @@ fi
 distro="$1"
 rootfs="$2"
 
-if [ "${distro}" != "debian-10" ] && [ "${distro}" != "debian-11" ] &&
-	[ "${distro}" != "debian-12" ] && [ "${distro}" != "debian-13" ] &&
-	[ "${distro}" != "ubuntu-20.04" ] && [ "${distro}" != "ubuntu-22.04" ] &&
-	[ "${distro}" != "ubuntu-24.04" ] && [ "${distro}" != "ubuntu-25.10" ] &&
-	[ "${distro}" != "fedora-44" ] && [ "${distro}" != "alma-8" ] &&
-	[ "${distro}" != "alma-9" ] && [ "${distro}" != "alma-10" ] &&
-	[ "${distro}" != "opensuse-leap-15.6" ] &&
-	[ "${distro}" != "opensuse-tumbleweed" ]; then
-	echo "Unsupported distro: ${distro}" >&2
-	usage
-fi
-
 if [ -e "${rootfs}" ]; then
 	echo "Rootfs path already exists: ${rootfs}" >&2
 	exit 1
@@ -39,44 +27,12 @@ fi
 
 mkdir -p "$(dirname "${rootfs}")"
 
-packages=(
-	bc
-	binutils
-	bison
-	build-essential
-	ca-certificates
-	diffutils
-	flex
-	git
-	iperf3
-	iproute2
-	iputils-ping
-	jq
-	kmod
-	libelf-dev
-	libmbedtls-dev
-	libnl-3-dev
-	libnl-genl-3-dev
-	libssl-dev
-	make
-	nftables
-	pkg-config
-	procps
-	psmisc
-	python3
-	python3-jsonschema
-	python3-yaml
-	rsync
-	tcpdump
-)
-
 build_debian_10() {
 	build_debian \
 		buster \
 		http://archive.debian.org/debian \
 		http://archive.debian.org/debian-security \
-		buster/updates \
-		--aptopt='Acquire::Check-Valid-Until "false"'
+		buster/updates
 }
 
 build_debian_11() {
@@ -108,26 +64,61 @@ build_debian() {
 	local mirror="$2"
 	local security_mirror="$3"
 	local security_suite="$4"
-	local debian_keyring include
-	local debian_packages=(
-		"${packages[@]}"
+	local debian_keyring="/usr/share/keyrings/debian-archive-keyring.gpg"
+	local include
+	local mmdebstrap_options=()
+	local packages=(
+		bc
+		binutils
+		bison
+		build-essential
+		ca-certificates
+		diffutils
+		flex
+		git
+		iperf3
+		iproute2
+		iputils-ping
+		jq
+		kmod
+		libelf-dev
+		libmbedtls-dev
+		libnl-3-dev
+		libnl-genl-3-dev
+		libssl-dev
 		linux-headers-amd64
 		linux-image-amd64
+		make
+		nftables
+		pkg-config
+		procps
+		psmisc
+		python3
+		python3-jsonschema
+		python3-yaml
+		rsync
 		systemd-sysv
+		tcpdump
 	)
-	shift 4
 
-	include=$(IFS=,; echo "${debian_packages[*]}")
+	if [ "${codename}" = "buster" ]; then
+		# Debian 10 is served from archive.debian.org, where old Release files
+		# are intentionally expired.
+		mmdebstrap_options+=('--aptopt=Acquire::Check-Valid-Until "false"')
+	fi
 
-	debian_keyring="/usr/share/keyrings/debian-archive-keyring.gpg"
 	if [ ! -r "${debian_keyring}" ]; then
 		echo "Missing Debian archive keyring: ${debian_keyring}" >&2
 		echo "Install debian-archive-keyring on the host." >&2
 		exit 1
 	fi
 
+	include=$(IFS=,; echo "${packages[*]}")
+
+	# The GitHub runner is Ubuntu, so make the foreign archive trust root
+	# explicit instead of depending on the host apt keyring setup.
 	mmdebstrap \
-		"$@" \
+		"${mmdebstrap_options[@]}" \
 		--variant=minbase \
 		--keyring="${debian_keyring}" \
 		--include="${include}" \
@@ -157,29 +148,58 @@ build_ubuntu_2510() {
 build_ubuntu() {
 	local codename="$1"
 	local extra_python="${2:-}"
-	local include ubuntu_keyring
-	local ubuntu_packages=(
-		"${packages[@]}"
+	local include
+	local ubuntu_keyring="/usr/share/keyrings/ubuntu-archive-keyring.gpg"
+	local packages=(
+		bc
+		binutils
+		bison
+		build-essential
 		busybox-static
+		ca-certificates
+		diffutils
+		flex
+		git
+		iperf3
+		iproute2
+		iputils-ping
+		jq
+		kmod
+		libelf-dev
+		libmbedtls-dev
+		libnl-3-dev
+		libnl-genl-3-dev
+		libssl-dev
 		linux-headers-generic
 		linux-image-generic
+		make
+		nftables
+		pkg-config
+		procps
+		psmisc
+		python3
+		python3-jsonschema
+		python3-yaml
+		rsync
 		systemd-sysv
+		tcpdump
 		udev
 	)
 
 	if [ -n "${extra_python}" ]; then
-		ubuntu_packages+=("${extra_python}")
+		packages+=("${extra_python}")
 	fi
 
-	include=$(IFS=,; echo "${ubuntu_packages[*]}")
-
-	ubuntu_keyring="/usr/share/keyrings/ubuntu-archive-keyring.gpg"
 	if [ ! -r "${ubuntu_keyring}" ]; then
 		echo "Missing Ubuntu archive keyring: ${ubuntu_keyring}" >&2
 		echo "Install ubuntu-keyring on the host." >&2
 		exit 1
 	fi
 
+	include=$(IFS=,; echo "${packages[*]}")
+
+	# Keep the bootstrap trust root explicit so runner image apt changes do not
+	# affect rootfs generation.
 	mmdebstrap \
 		--variant=minbase \
 		--keyring="${ubuntu_keyring}" \
@@ -198,10 +218,14 @@ mount_dnf_rootfs() {
 		"${rootfs}/sys" \
 		"${rootfs}/run"
 
+	# /dev is recursive because package scriptlets may need devices under
+	# submounts such as /dev/pts.
 	mount --rbind /dev "${rootfs}/dev"
 	mount --make-rslave "${rootfs}/dev"
+	# procfs and sysfs let kernel package scriptlets query the running host.
 	mount -t proc proc "${rootfs}/proc"
 	mount -t sysfs sysfs "${rootfs}/sys"
+	# Some package scriptlets expect a writable runtime directory.
 	mount -t tmpfs tmpfs "${rootfs}/run"
 }
 
@@ -219,6 +243,8 @@ build_dnf() {
 	local rc clean_rc
 	shift 3
 
+	# RPM kernel package scriptlets run inside the installroot and expect
+	# procfs, sysfs, devtmpfs, and /run to exist.
 	mount_dnf_rootfs
 
 	set +e
@@ -238,6 +264,9 @@ build_dnf() {
 
 	if [ "${rc}" -ne 0 ]; then
 		if [ "${allow_install_failure}" = 1 ]; then
+			# Some kernel post-install scripts still fail in a minimal chroot
+			# after installing the files we need. The rootfs validation below
+			# decides whether the result is usable.
 			echo "dnf install returned ${rc}; continuing with rootfs validation" >&2
 		else
 			return "${rc}"
@@ -343,7 +372,23 @@ build_alma() {
 
 build_opensuse_leap() {
 	local releasever="$1"
-	local repo_dir="${script_dir}/repos/opensuse-leap"
+	local repo_dir
+
+	# leap 15 has "update-oss" repo but leap 16 doesn't so we have to use
+	# different files to avoid 404
+	case "${releasever}" in
+	15.*)
+		repo_dir="${script_dir}/repos/opensuse-leap15"
+		;;
+	16.*)
+		repo_dir="${script_dir}/repos/opensuse-leap16"
+		;;
+	*)
+		echo "Unsupported openSUSE Leap release: ${releasever}" >&2
+		exit 1
+		;;
+	esac
+
 	build_opensuse "${repo_dir}" "${releasever}"
 }
 
@@ -396,6 +441,7 @@ build_opensuse() {
 
 	build_dnf "${repo_dir}" "${releasever}" 1 "${packages[@]}"
 
+	# leap marks non-SUSE modules unsupported unless this policy knob is set
 	echo "allow_unsupported_modules 1" \
 		> "${rootfs}/etc/modprobe.d/10-unsupported-modules.conf"
 }
@@ -440,8 +486,15 @@ alma-10)
 opensuse-leap-15.6)
 	build_opensuse_leap 15.6
 	;;
+opensuse-leap-16.0)
+	build_opensuse_leap 16.0
+	;;
 opensuse-tumbleweed)
 	build_opensuse_tumbleweed
+	;;
+*)
+	echo "Unsupported target: ${distro}" >&2
+	usage
 	;;
 esac
 

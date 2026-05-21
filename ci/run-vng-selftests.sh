@@ -9,7 +9,7 @@ script_dir=$(unset CDPATH; cd -- "$(dirname -- "$0")" && pwd)
 . "${script_dir}/rootfs-common.sh"
 
 usage() {
-	echo "Usage: $0 <debian-10|debian-11|debian-12|debian-13|ubuntu-20.04|ubuntu-22.04|ubuntu-24.04|ubuntu-25.10|fedora-44|alma-8|alma-9|alma-10|opensuse-leap-15.6|opensuse-tumbleweed> <rootfs-dir> <repo-dir>" >&2
+	echo "Usage: $0 <target> <rootfs-dir> <repo-dir>" >&2
 	exit 1
 }
 
@@ -20,18 +20,25 @@ fi
 distro="$1"
 rootfs=$(realpath "$2")
 repo=$(realpath "$3")
+force_9p=0
+root_guesttools=0
 
-if [ "${distro}" != "debian-10" ] && [ "${distro}" != "debian-11" ] &&
-	[ "${distro}" != "debian-12" ] && [ "${distro}" != "debian-13" ] &&
-	[ "${distro}" != "ubuntu-20.04" ] && [ "${distro}" != "ubuntu-22.04" ] &&
-	[ "${distro}" != "ubuntu-24.04" ] && [ "${distro}" != "ubuntu-25.10" ] &&
-	[ "${distro}" != "fedora-44" ] && [ "${distro}" != "alma-8" ] &&
-	[ "${distro}" != "alma-9" ] && [ "${distro}" != "alma-10" ] &&
-	[ "${distro}" != "opensuse-leap-15.6" ] &&
-	[ "${distro}" != "opensuse-tumbleweed" ]; then
-	echo "Unsupported distro: ${distro}" >&2
+case "${distro}" in
+debian-10)
+	# debian10 is too old for virtiofs
+	force_9p=1
+	echo "${distro} requires 9p rootfs"
+	;;
+debian-11|debian-12|debian-13|ubuntu-20.04|ubuntu-22.04|ubuntu-24.04|ubuntu-25.10|fedora-44|opensuse-leap-15.6|opensuse-leap-16.0|opensuse-tumbleweed)
+	;;
+alma-8|alma-9|alma-10)
+	root_guesttools=1
+	;;
+*)
+	echo "Unsupported target: ${distro}" >&2
 	usage
-fi
+	;;
+esac
 
 if [ ! -d "${rootfs}" ]; then
 	echo "Missing rootfs: ${rootfs}" >&2
@@ -60,6 +67,10 @@ fi
 vng_args=()
 vng_cmd="${VNG:-vng}"
 guest_repo="/repo"
+
+# Luckily GH workers support KVM acceleration so nested virtualization is
+# smooth. If that changes in the future, we fallback to QEMU though that's
+# painfully slow.
 if [ -e /dev/kvm ]; then
 	echo "Using KVM acceleration"
 else
@@ -69,20 +80,17 @@ fi
 if [ "${VNG_VERBOSE:-1}" = "1" ]; then
 	vng_args+=(--verbose)
 fi
-if [ "${distro}" = "debian-10" ]; then
-	echo "Using 9p rootfs for Debian 10"
+if [ "${force_9p}" -eq 1 ]; then
+	echo "Forcing 9p rootfs in vng"
 	vng_args+=(--force-9p)
 fi
-if [[ "${distro}" == alma-* ]]; then
-	rsync -a --delete \
-		--exclude .git \
-		--exclude .semcode.db \
-		--exclude CI-MATRIX-NOTES.md \
-		"${repo}/" "${rootfs}${guest_repo}/"
 
+# copy the ovpn-backports repo into the rootfs
+rsync -a --delete "${repo}/" "${rootfs}${guest_repo}/"
+
+# tell vng to copy its guesttools into the rootfs and execute them from there
+if [ "${root_guesttools}" -eq 1 ]; then
 	vng_args+=(--root-guesttools --no-virtme-ng-init)
-else
-	vng_args+=(--rwdir "${guest_repo}=${repo}")
 fi
 
 echo "Booting ${distro} with ${kernel_release}"
