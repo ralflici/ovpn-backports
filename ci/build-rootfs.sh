@@ -1,0 +1,260 @@
+#!/bin/bash
+# SPDX-License-Identifier: GPL-2.0
+
+set -euo pipefail
+
+script_dir=$(unset CDPATH; cd -- "$(dirname -- "$0")" && pwd)
+
+# shellcheck source=ci/rootfs-common.sh
+. "${script_dir}/rootfs-common.sh"
+
+usage() {
+	echo "Usage: $0 <target> <rootfs-dir>" >&2
+	exit 1
+}
+
+if [ "$#" -ne 2 ]; then
+	usage
+fi
+
+distro="$1"
+rootfs="$2"
+
+if [ -e "${rootfs}" ]; then
+	echo "Rootfs path already exists: ${rootfs}" >&2
+	exit 1
+fi
+
+mkdir -p "$(dirname "${rootfs}")"
+
+build_debian_10() {
+	build_debian \
+		buster \
+		http://archive.debian.org/debian \
+		http://archive.debian.org/debian-security \
+		buster/updates
+}
+
+build_debian_11() {
+	build_debian \
+		bullseye \
+		http://deb.debian.org/debian \
+		http://security.debian.org/debian-security \
+		bullseye-security
+}
+
+build_debian_12() {
+	build_debian \
+		bookworm \
+		http://deb.debian.org/debian \
+		http://security.debian.org/debian-security \
+		bookworm-security
+}
+
+build_debian_13() {
+	build_debian \
+		trixie \
+		http://deb.debian.org/debian \
+		http://security.debian.org/debian-security \
+		trixie-security
+}
+
+build_debian() {
+	local codename="$1"
+	local mirror="$2"
+	local security_mirror="$3"
+	local security_suite="$4"
+	local debian_keyring="/usr/share/keyrings/debian-archive-keyring.gpg"
+	local include
+	local mmdebstrap_options=()
+	local packages=(
+		bc
+		binutils
+		bison
+		build-essential
+		ca-certificates
+		diffutils
+		flex
+		git
+		iperf3
+		iproute2
+		iputils-ping
+		jq
+		kmod
+		libelf-dev
+		libmbedtls-dev
+		libnl-3-dev
+		libnl-genl-3-dev
+		libssl-dev
+		linux-headers-amd64
+		linux-image-amd64
+		make
+		nftables
+		pkg-config
+		procps
+		psmisc
+		python3
+		python3-jsonschema
+		python3-yaml
+		rsync
+		systemd-sysv
+		tcpdump
+	)
+
+	if [ "${codename}" = "buster" ]; then
+		# Debian 10 is served from archive.debian.org, where old Release files
+		# are intentionally expired.
+		mmdebstrap_options+=('--aptopt=Acquire::Check-Valid-Until "false"')
+	fi
+
+	if [ ! -r "${debian_keyring}" ]; then
+		echo "Missing Debian archive keyring: ${debian_keyring}" >&2
+		echo "Install debian-archive-keyring on the host." >&2
+		exit 1
+	fi
+
+	include=$(IFS=,; echo "${packages[*]}")
+
+	# The GitHub runner is Ubuntu, so make the foreign archive trust root
+	# explicit instead of depending on the host apt keyring setup.
+	mmdebstrap \
+		"${mmdebstrap_options[@]}" \
+		--variant=minbase \
+		--keyring="${debian_keyring}" \
+		--include="${include}" \
+		"${codename}" \
+		"${rootfs}" \
+		"deb ${mirror} ${codename} main" \
+		"deb ${mirror} ${codename}-updates main" \
+		"deb ${security_mirror} ${security_suite} main"
+}
+
+build_ubuntu_2004() {
+	build_ubuntu focal python3.9
+}
+
+build_ubuntu_2204() {
+	build_ubuntu jammy
+}
+
+build_ubuntu_2404() {
+	build_ubuntu noble
+}
+
+build_ubuntu_2510() {
+	build_ubuntu questing
+}
+
+build_ubuntu() {
+	local codename="$1"
+	local extra_python="${2:-}"
+	local include
+	local ubuntu_keyring="/usr/share/keyrings/ubuntu-archive-keyring.gpg"
+	local packages=(
+		bc
+		binutils
+		bison
+		build-essential
+		busybox-static
+		ca-certificates
+		diffutils
+		flex
+		git
+		iperf3
+		iproute2
+		iputils-ping
+		jq
+		kmod
+		libelf-dev
+		libmbedtls-dev
+		libnl-3-dev
+		libnl-genl-3-dev
+		libssl-dev
+		linux-headers-generic
+		linux-image-generic
+		make
+		nftables
+		pkg-config
+		procps
+		psmisc
+		python3
+		python3-jsonschema
+		python3-yaml
+		rsync
+		systemd-sysv
+		tcpdump
+		udev
+	)
+
+	if [ -n "${extra_python}" ]; then
+		packages+=("${extra_python}")
+	fi
+
+	if [ ! -r "${ubuntu_keyring}" ]; then
+		echo "Missing Ubuntu archive keyring: ${ubuntu_keyring}" >&2
+		echo "Install ubuntu-keyring on the host." >&2
+		exit 1
+	fi
+
+	include=$(IFS=,; echo "${packages[*]}")
+
+	# Keep the bootstrap trust root explicit so runner image apt changes do not
+	# affect rootfs generation.
+	mmdebstrap \
+		--variant=minbase \
+		--keyring="${ubuntu_keyring}" \
+		--include="${include}" \
+		"${codename}" \
+		"${rootfs}" \
+		"deb http://archive.ubuntu.com/ubuntu ${codename} main universe" \
+		"deb http://archive.ubuntu.com/ubuntu ${codename}-updates main universe" \
+		"deb http://security.ubuntu.com/ubuntu ${codename}-security main universe"
+}
+
+case "${distro}" in
+debian-10)
+	build_debian_10
+	;;
+debian-11)
+	build_debian_11
+	;;
+debian-12)
+	build_debian_12
+	;;
+debian-13)
+	build_debian_13
+	;;
+ubuntu-20.04)
+	build_ubuntu_2004
+	;;
+ubuntu-22.04)
+	build_ubuntu_2204
+	;;
+ubuntu-24.04)
+	build_ubuntu_2404
+	;;
+ubuntu-25.10)
+	build_ubuntu_2510
+	;;
+*)
+	echo "Unsupported target: ${distro}" >&2
+	usage
+	;;
+esac
+
+kernel=$(rootfs_find_kernel_image "${rootfs}")
+
+if [ -z "${kernel}" ]; then
+	echo "No kernel image found in ${rootfs}" >&2
+	exit 1
+fi
+
+kernel_release=$(rootfs_kernel_release "${kernel}")
+
+if ! rootfs_has_kernel_headers "${rootfs}" "${kernel_release}"; then
+	echo "Missing headers for ${kernel_release}" >&2
+	exit 1
+fi
+
+echo "Built ${distro} rootfs at ${rootfs}"
+echo "Kernel: ${kernel_release}"
