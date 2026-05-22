@@ -145,6 +145,10 @@ build_ubuntu_2510() {
 	build_ubuntu questing
 }
 
+build_ubuntu_2604() {
+	build_ubuntu resolute
+}
+
 build_ubuntu() {
 	local codename="$1"
 	local extra_python="${2:-}"
@@ -470,6 +474,9 @@ ubuntu-24.04)
 	;;
 ubuntu-25.10)
 	build_ubuntu_2510
+	;;
+ubuntu-26.04)
+	build_ubuntu_2604
 	;;
 fedora-44)
 	build_fedora_44
