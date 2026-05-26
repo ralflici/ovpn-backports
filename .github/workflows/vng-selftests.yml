@@ -25,6 +25,7 @@ jobs:
           - ubuntu-22.04
           - ubuntu-24.04
           - ubuntu-25.10
+          - ubuntu-26.04
           - fedora-44
           - alma-8
           - alma-9
