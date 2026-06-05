@@ -31,7 +31,7 @@ debian-10)
 	;;
 debian-11|debian-12|debian-13|ubuntu-20.04|ubuntu-22.04|ubuntu-24.04|ubuntu-25.10|ubuntu-26.04|fedora-44|opensuse-leap-15.6|opensuse-leap-16.0|opensuse-tumbleweed)
 	;;
-alma-8|alma-9|alma-10)
+alma-8|alma-9|alma-10|rhel-8|rhel-9|rhel-10)
 	root_guesttools=1
 	;;
 *)

@@ -3,6 +3,8 @@ name: virtme-ng selftests
 
 "on":
   workflow_dispatch:
+  schedule:
+    - cron: "0 7 * * 2,5"
 
 permissions:
   contents: read
@@ -30,6 +32,9 @@ jobs:
           - alma-8
           - alma-9
           - alma-10
+          - rhel-8
+          - rhel-9
+          - rhel-10
           - opensuse-leap-15.6
           - opensuse-leap-16.0
           - opensuse-tumbleweed
@@ -60,7 +65,9 @@ jobs:
       # RHEL kernels don't support 9p but vng mounts its guesttools using 9p so
       # we have to use a patched version of vng that avoid 9p completely
       - name: Checkout patched virtme-ng
-        if: startsWith(matrix.distro, 'alma-')
+        if: >-
+          (startsWith(matrix.distro, 'alma-') ||
+          startsWith(matrix.distro, 'rhel-'))
         run: |
           git clone \
             --depth 1 \
@@ -70,23 +77,90 @@ jobs:
           git -C "${RUNNER_TEMP}/virtme-ng" rev-parse HEAD
 
       - name: Build ${{ matrix.distro }} rootfs
+        env:
+          # RHEL differs from the public targets: build-rootfs.sh uses these
+          # secrets inside a temporary UBI container to authenticate against
+          # Red Hat CDN and generate the rootfs.
+          RHEL_ORG_ID: ${{ secrets.RHEL_ORG_ID }}
+          RHEL_ACTIVATION_KEY: ${{ secrets.RHEL_ACTIVATION_KEY }}
         run: |
-          sudo ./ci/build-rootfs.sh \
+          sudo --preserve-env=RHEL_ORG_ID,RHEL_ACTIVATION_KEY \
+            ./ci/build-rootfs.sh \
             "${{ matrix.distro }}" \
             "${RUNNER_TEMP}/rootfs/${{ matrix.distro }}"
 
+      - name: Compute rootfs fingerprint
+        id: rootfs-fingerprint
+        run: |
+          # Build-rootfs is the source of truth for package selection. Compute
+          # the scheduled-run cache key from the actual kernel it installed.
+          fingerprint=$(./ci/rootfs-fingerprint.sh \
+            "${{ matrix.distro }}" \
+            "${RUNNER_TEMP}/rootfs/${{ matrix.distro }}" \
+            "${GITHUB_SHA}")
+          echo "hash=${fingerprint}" >> "${GITHUB_OUTPUT}"
+
+      - name: Check previous scheduled result
+        if: github.event_name == 'schedule'
+        id: selftest-cache
+        uses: actions/cache/restore@v5
+        with:
+          # Scheduled runs only need to rerun compilation + selftests when this
+          # exact repo revision has not already passed with the generated
+          # target rootfs kernel.
+          path: ${{ runner.temp }}/vng-cache/${{ matrix.distro }}
+          key: >-
+            vng-selftests-${{ matrix.distro }}-${{
+            steps.rootfs-fingerprint.outputs.hash }}
+          lookup-only: true
+
+      - name: Skip unchanged scheduled target
+        if: >-
+          github.event_name == 'schedule' &&
+          steps.selftest-cache.outputs.cache-hit == 'true'
+        run: |
+          # The following selftest steps are skipped by their own 'if:'
+          # conditions; this step just leaves an explicit log message.
+          echo "${{ matrix.distro }} already passed for this rootfs fingerprint"
+
       - name: Import ovpn sources and selftests
+        if: steps.selftest-cache.outputs.cache-hit != 'true'
         run: |
           ./backports-ctl.sh get-ovpn -t
 
       - name: Run selftests in ${{ matrix.distro }}
+        if: steps.selftest-cache.outputs.cache-hit != 'true'
         run: |
-          if [[ "${{ matrix.distro }}" == alma-* ]]; then
-            vng="${RUNNER_TEMP}/virtme-ng/vng"
-          else
-            vng="$(command -v vng)"
-          fi
+          case "${{ matrix.distro }}" in
+          alma-*|rhel-*)
+            vng="${RUNNER_TEMP}/virtme-ng/vng" ;;
+          *)
+            vng="$(command -v vng)" ;;
+          esac
           sudo env VNG="${vng}" ./ci/run-vng-selftests.sh \
             "${{ matrix.distro }}" \
             "${RUNNER_TEMP}/rootfs/${{ matrix.distro }}" \
             "${GITHUB_WORKSPACE}"
+
+      - name: Record successful scheduled result
+        if: >-
+          github.event_name == 'schedule' &&
+          steps.selftest-cache.outputs.cache-hit != 'true'
+        run: |
+          # Save a tiny marker only after the scheduled selftests pass.
+          cache_dir="${RUNNER_TEMP}/vng-cache/${{ matrix.distro }}"
+          mkdir -p "${cache_dir}"
+          printf '%s\n' \
+            "${{ steps.rootfs-fingerprint.outputs.hash }}" \
+            > "${cache_dir}/fingerprint"
+
+      - name: Save successful scheduled result
+        if: >-
+          github.event_name == 'schedule' &&
+          steps.selftest-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v5
+        with:
+          path: ${{ runner.temp }}/vng-cache/${{ matrix.distro }}
+          key: >-
+            vng-selftests-${{ matrix.distro }}-${{
+            steps.rootfs-fingerprint.outputs.hash }}

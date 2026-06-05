@@ -1,0 +1,12 @@
+# Used by RHEL rootfs builds for test dependencies not shipped by RHEL itself.
+# Based on the Fedora EPEL release package:
+# https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
+#
+# To inspect the authoritative repo file:
+#   rpm2cpio epel-release-latest-9.noarch.rpm | cpio -id './etc/yum.repos.d/epel.repo'
+[epel]
+name=Extra Packages for Enterprise Linux $releasever - $basearch
+metalink=https://mirrors.fedoraproject.org/metalink?repo=epel-$releasever&arch=$basearch
+enabled=1
+gpgcheck=1
+gpgkey=https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-$releasever

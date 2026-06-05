@@ -6,16 +6,16 @@
 # installed in the rootfs, so verify repository metadata during bootstrap.
 [repo-oss]
 name=openSUSE Tumbleweed OSS
-baseurl=https://download.opensuse.org/tumbleweed/repo/oss/
+baseurl=https://cdn.opensuse.org/tumbleweed/repo/oss/
 enabled=1
 gpgcheck=0
 repo_gpgcheck=1
-gpgkey=https://download.opensuse.org/tumbleweed/repo/oss/repodata/repomd.xml.key
+gpgkey=https://cdn.opensuse.org/tumbleweed/repo/oss/repodata/repomd.xml.key
 
 [repo-update]
 name=openSUSE Tumbleweed Updates
-baseurl=https://download.opensuse.org/update/tumbleweed/
+baseurl=https://cdn.opensuse.org/update/tumbleweed/
 enabled=1
 gpgcheck=0
 repo_gpgcheck=1
-gpgkey=https://download.opensuse.org/update/tumbleweed/repodata/repomd.xml.key
+gpgkey=https://cdn.opensuse.org/update/tumbleweed/repodata/repomd.xml.key
