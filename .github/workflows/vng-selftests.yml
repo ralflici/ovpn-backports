@@ -13,7 +13,6 @@ jobs:
   vng-selftests:
     uses: mandelbitdev/kmod-ci/.github/workflows/out-of-tree-vng.yml@main
     with:
-      ci-repository: mandelbitdev/kmod-ci
       cache-prefix: ovpn-backports
       guest-script: ci/run-selftests.sh
       prepare-command: ./backports-ctl.sh get-ovpn -t
