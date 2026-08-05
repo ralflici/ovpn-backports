@@ -1,5 +1,5 @@
 diff --git a/drivers/net/ovpn/tcp.c b/drivers/net/ovpn/tcp.c
-index 65054cc..7c74e15 100644
+index 65054cc..7291dbc 100644
 --- a/drivers/net/ovpn/tcp.c
 +++ b/drivers/net/ovpn/tcp.c
 @@ -10,6 +10,7 @@
@@ -32,7 +32,7 @@ index 65054cc..7c74e15 100644
 +#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 19, 0)
 +static int ovpn_tcp_recvmsg(struct sock *sk, struct msghdr *msg, size_t len,
 +			    int noblock, int flags, int *addr_len)
-+#elif LINUX_VERSION_CODE < KERNEL_VERSION(7, 1, 0)
++#elif OVPN_PROTO_RECVMSG_HAS_ADDR_LEN
 +static int ovpn_tcp_recvmsg(struct sock *sk, struct msghdr *msg, size_t len,
 +			    int flags, int *addr_len)
 +#else
@@ -67,7 +67,7 @@ index 65054cc..7c74e15 100644
  		if (skb_queue_len(&peer->tcp.out_queue) >=
 -		    READ_ONCE(net_hotdata.max_backlog)) {
 +		    ovpn_tcp_max_backlog()) {
- 			dev_dstats_tx_dropped(peer->ovpn->dev);
+ 			ovpn_dev_dstats_tx_dropped(peer->ovpn->dev);
  			kfree_skb(skb);
  			goto unlock;
 @@ -557,13 +576,21 @@ int ovpn_tcp_socket_attach(struct ovpn_socket *ovpn_sock,

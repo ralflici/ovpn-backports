@@ -14,16 +14,6 @@ index 602ff68c23e0..fc9a56170091 100755
  
      args = parser.parse_args()
  
-@@ -274,7 +277,7 @@ def main():
- 
-     if args.list_families:
-         for filename in sorted(os.listdir(spec_dir())):
-             if filename.endswith('.yaml'):
--                print(filename.removesuffix('.yaml'))
-+                print(filename[:-5])
-         return
- 
-     if args.no_schema:
 diff --git a/tools/net/ynl/pyynl/lib/nlspec.py b/tools/net/ynl/pyynl/lib/nlspec.py
 index e92a103e3c57..d374fbb7a561 100644
 --- a/tools/net/ynl/pyynl/lib/nlspec.py

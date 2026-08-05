@@ -15,9 +15,11 @@ index 2e0420f..d6564ee 100644
  	return 0;
  }
  
-@@ -93,22 +99,30 @@ static void ovpn_net_uninit(struct net_device *dev)
+@@ -93,24 +99,32 @@ static void ovpn_net_uninit(struct net_device *dev)
  	struct ovpn_priv *ovpn = netdev_priv(dev);
  
+ 	disable_delayed_work_sync(&ovpn->keepalive_work);
+ 	ovpn_peers_free(ovpn, NULL, OVPN_DEL_PEER_REASON_TEARDOWN);
  	gro_cells_destroy(&ovpn->gro_cells);
 +#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 9, 0)
 +	free_percpu(dev->tstats);
@@ -98,10 +100,10 @@ index 2e0420f..d6564ee 100644
 +}
 +#endif
 +
- static void ovpn_dellink(struct net_device *dev, struct list_head *head)
+ static int ovpn_fill_info(struct sk_buff *skb, const struct net_device *dev)
  {
  	struct ovpn_priv *ovpn = netdev_priv(dev);
-@@ -229,10 +266,14 @@ static int ovpn_fill_info(struct sk_buff *skb, const struct net_device *dev)
+@@ -229,9 +266,13 @@ static int ovpn_fill_info(struct sk_buff *skb, const struct net_device *dev)
  
  static struct rtnl_link_ops ovpn_link_ops = {
  	.kind = "ovpn",
@@ -115,7 +117,6 @@ index 2e0420f..d6564ee 100644
 +#endif
  	.maxtype = IFLA_OVPN_MAX,
  	.newlink = ovpn_newlink,
- 	.dellink = ovpn_dellink,
 @@ -277,3 +318,4 @@ module_exit(ovpn_cleanup);
  MODULE_DESCRIPTION("OpenVPN data channel offload (ovpn)");
  MODULE_AUTHOR("Antonio Quartulli <antonio@openvpn.net>");

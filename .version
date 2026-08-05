@@ -1,4 +1,4 @@
 tree=ovpn-net-next
-branch=main
-kernel_version=7.1.0-rc3
-backports_commit=e2b44eb
+branch=source-port-entropy
+kernel_version=7.2.0-rc4
+backports_commit=4a637b6

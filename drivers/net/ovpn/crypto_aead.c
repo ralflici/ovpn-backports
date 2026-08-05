@@ -23,7 +23,6 @@
 #include "proto.h"
 #include "skb.h"
 
-#define OVPN_AUTH_TAG_SIZE	16
 #define OVPN_AAD_SIZE		(OVPN_OPCODE_SIZE + OVPN_NONCE_WIRE_SIZE)
 
 #define ALG_NAME_AES		"gcm(aes)"
@@ -409,11 +408,13 @@ void ovpn_aead_crypto_key_slot_destroy(struct ovpn_crypto_key_slot *ks)
 
 	crypto_free_aead(ks->encrypt);
 	crypto_free_aead(ks->decrypt);
+	ovpn_pktid_recv_cleanup(&ks->pid_recv);
 	kfree(ks);
 }
 
 struct ovpn_crypto_key_slot *
-ovpn_aead_crypto_key_slot_new(const struct ovpn_key_config *kc)
+ovpn_aead_crypto_key_slot_new(const struct ovpn_key_config *kc,
+			      unsigned int recv_window_size)
 {
 	struct ovpn_crypto_key_slot *ks = NULL;
 	const char *alg_name;
@@ -444,6 +445,10 @@ ovpn_aead_crypto_key_slot_new(const struct ovpn_key_config *kc)
 	ks->decrypt = NULL;
 	kref_init(&ks->refcount);
 	ks->key_id = kc->key_id;
+	ovpn_pktid_xmit_init(&ks->pid_xmit);
+	ret = ovpn_pktid_recv_init(&ks->pid_recv, recv_window_size);
+	if (ret < 0)
+		goto destroy_ks;
 
 	ks->encrypt = ovpn_aead_init("encrypt", alg_name,
 				     kc->encrypt.cipher_key,
@@ -467,10 +472,6 @@ ovpn_aead_crypto_key_slot_new(const struct ovpn_key_config *kc)
 	       OVPN_NONCE_TAIL_SIZE);
 	memcpy(ks->nonce_tail_recv, kc->decrypt.nonce_tail,
 	       OVPN_NONCE_TAIL_SIZE);
-
-	/* init packet ID generation/validation */
-	ovpn_pktid_xmit_init(&ks->pid_xmit);
-	ovpn_pktid_recv_init(&ks->pid_recv);
 
 	return ks;
 

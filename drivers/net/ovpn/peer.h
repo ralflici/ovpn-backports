@@ -23,6 +23,10 @@
  * @dev_tracker: reference tracker for associated dev
  * @id: unique identifier, used to match incoming packets
  * @tx_id: identifier to be used in TX packets
+ * @entropy_min: minimum UDP source port to use for entropy
+ * @entropy_max: maximum UDP source port to use for entropy
+ * @entropy_tx: whether to use UDP source-port entropy on TX
+ * @entropy_rx: whether to accept UDP source-port entropy on RX
  * @vpn_addrs: IP addresses assigned over the tunnel
  * @vpn_addrs.ipv4: IPv4 assigned to peer on the tunnel
  * @vpn_addrs.ipv6: IPv6 assigned to peer on the tunnel
@@ -66,6 +70,10 @@ struct ovpn_peer {
 	netdevice_tracker dev_tracker;
 	u32 id;
 	u32 tx_id;
+	u16 entropy_min;
+	u16 entropy_max;
+	bool entropy_tx;
+	bool entropy_rx;
 	struct {
 		struct in_addr ipv4;
 		struct in6_addr ipv6;
@@ -127,7 +135,6 @@ static inline bool ovpn_peer_hold(struct ovpn_peer *peer)
 	return kref_get_unless_zero(&peer->refcount);
 }
 
-void ovpn_peer_release(struct ovpn_peer *peer);
 void ovpn_peer_release_kref(struct kref *kref);
 
 /**
@@ -139,7 +146,9 @@ static inline void ovpn_peer_put(struct ovpn_peer *peer)
 	kref_put(&peer->refcount, ovpn_peer_release_kref);
 }
 
-struct ovpn_peer *ovpn_peer_new(struct ovpn_priv *ovpn, u32 id);
+struct ovpn_peer *ovpn_peer_new(struct ovpn_priv *ovpn, u32 id,
+				bool entropy_tx, bool entropy_rx,
+				u16 entropy_min, u16 entropy_max);
 int ovpn_peer_add(struct ovpn_priv *ovpn, struct ovpn_peer *peer);
 int ovpn_peer_del(struct ovpn_peer *peer, enum ovpn_del_peer_reason reason);
 void ovpn_peers_free(struct ovpn_priv *ovpn, struct sock *sock,
@@ -155,6 +164,7 @@ bool ovpn_peer_check_by_src(struct ovpn_priv *ovpn, struct sk_buff *skb,
 			    struct ovpn_peer *peer);
 
 void ovpn_peer_keepalive_set(struct ovpn_peer *peer, u32 interval, u32 timeout);
+void ovpn_peer_keepalive_send_now(struct ovpn_peer *peer);
 void ovpn_peer_keepalive_work(struct work_struct *work);
 
 void ovpn_peer_endpoints_update(struct ovpn_peer *peer, struct sk_buff *skb);

@@ -374,8 +374,18 @@ static int ovpn_nl_peer_modify(struct ovpn_peer *peer, struct genl_info *info,
 	/* In a multipeer-to-multipeer setup we may have asymmetric peer IDs,
 	 * that is peer->id might be different from peer->tx_id.
 	 */
-	if (attrs[OVPN_A_PEER_TX_ID])
+	if (attrs[OVPN_A_PEER_TX_ID]) {
+		if (peer->entropy_tx &&
+		    nla_get_u32(attrs[OVPN_A_PEER_TX_ID]) ==
+		    OVPN_PEER_ID_UNDEF) {
+			NL_SET_ERR_MSG_MOD(info->extack,
+					   "TX entropy requires a defined tx-id");
+			ret = -EINVAL;
+			goto err_unlock;
+		}
+
 		peer->tx_id = nla_get_u32(attrs[OVPN_A_PEER_TX_ID]);
+	}
 
 	if (attrs[OVPN_A_PEER_VPN_IPV4]) {
 		rehash = true;
@@ -410,14 +420,24 @@ err_unlock:
 	return ret;
 }
 
+static bool ovpn_nl_entropy_range_valid(u16 min, u16 max)
+{
+	if (!min && !max)
+		return true;
+
+	return min && max && min < max;
+}
+
 int ovpn_nl_peer_new_doit(struct sk_buff *skb, struct genl_info *info)
 {
-	struct nlattr *attrs[OVPN_A_PEER_MAX + 1];
 	struct ovpn_priv *ovpn = info->user_ptr[0];
+	struct nlattr *attrs[OVPN_A_PEER_MAX + 1];
+	u16 entropy_min = 0, entropy_max = 0;
 	struct ovpn_socket *ovpn_sock;
+	bool entropy_tx, entropy_rx;
+	u32 sockfd, peer_id, tx_id;
 	struct socket *sock = NULL;
 	struct ovpn_peer *peer;
-	u32 sockfd, peer_id;
 	int ret;
 
 	if (GENL_REQ_ATTR_CHECK(info, OVPN_A_PEER))
@@ -445,8 +465,46 @@ int ovpn_nl_peer_new_doit(struct sk_buff *skb, struct genl_info *info)
 	}
 
 	peer_id = nla_get_u32(attrs[OVPN_A_PEER_ID]);
+	tx_id = attrs[OVPN_A_PEER_TX_ID] ?
+		nla_get_u32(attrs[OVPN_A_PEER_TX_ID]) : peer_id;
+	entropy_tx = attrs[OVPN_A_PEER_SPORT_ENTROPY_TX_MIN] &&
+		attrs[OVPN_A_PEER_SPORT_ENTROPY_TX_MAX];
+	entropy_rx = nla_get_flag(attrs[OVPN_A_PEER_SPORT_ENTROPY_RX]);
+	if (!!attrs[OVPN_A_PEER_SPORT_ENTROPY_TX_MIN] !=
+	    !!attrs[OVPN_A_PEER_SPORT_ENTROPY_TX_MAX]) {
+		NL_SET_ERR_MSG_MOD(info->extack,
+				   "both entropy source-port bounds are required");
+		return -EINVAL;
+	}
 
-	peer = ovpn_peer_new(ovpn, peer_id);
+	if (entropy_tx) {
+		entropy_min =
+			nla_get_u16(attrs[OVPN_A_PEER_SPORT_ENTROPY_TX_MIN]);
+		entropy_max =
+			nla_get_u16(attrs[OVPN_A_PEER_SPORT_ENTROPY_TX_MAX]);
+	}
+
+	if (entropy_tx &&
+	    !ovpn_nl_entropy_range_valid(entropy_min, entropy_max)) {
+		NL_SET_ERR_MSG_MOD(info->extack,
+				   "entropy source-port range must be zero or have min below max");
+		return -EINVAL;
+	}
+
+	if (entropy_rx && peer_id == OVPN_PEER_ID_UNDEF) {
+		NL_SET_ERR_MSG_MOD(info->extack,
+				   "RX entropy requires a defined peer ID");
+		return -EINVAL;
+	}
+
+	if (entropy_tx && tx_id == OVPN_PEER_ID_UNDEF) {
+		NL_SET_ERR_MSG_MOD(info->extack,
+				   "TX entropy requires a defined tx-id");
+		return -EINVAL;
+	}
+
+	peer = ovpn_peer_new(ovpn, peer_id, entropy_tx, entropy_rx,
+			     entropy_min, entropy_max);
 	if (IS_ERR(peer)) {
 		NL_SET_ERR_MSG_FMT_MOD(info->extack,
 				       "cannot create new peer object for peer %u: %ld",
@@ -463,6 +521,15 @@ int ovpn_nl_peer_new_doit(struct sk_buff *skb, struct genl_info *info)
 				       "cannot lookup peer socket (fd=%u): %d",
 				       sockfd, ret);
 		ret = -ENOTSOCK;
+		goto peer_release;
+	}
+
+	if ((entropy_tx || entropy_rx) &&
+	    sock->sk->sk_protocol != IPPROTO_UDP) {
+		NL_SET_ERR_MSG_MOD(info->extack,
+				   "UDP source-port entropy requires UDP transport");
+		sockfd_put(sock);
+		ret = -EINVAL;
 		goto peer_release;
 	}
 
@@ -528,10 +595,12 @@ int ovpn_nl_peer_new_doit(struct sk_buff *skb, struct genl_info *info)
 sock_release:
 	ovpn_socket_release(peer);
 peer_release:
-	/* release right away because peer was not yet hashed, thus it is not
-	 * used in any context
+	/* For UDP, the peer is unreachable until added to the hashtables, so
+	 * dropping the initial reference is enough. For TCP, the peer may be
+	 * concurrently reachable via sk_user_data->peer until
+	 * ovpn_socket_release() detaches; rely on the refcount.
 	 */
-	ovpn_peer_release(peer);
+	ovpn_peer_put(peer);
 
 	return ret;
 }
@@ -663,6 +732,18 @@ static int ovpn_nl_send_peer_common(struct sk_buff *skb, struct net *net,
 		goto err;
 
 	if (nla_put_u32(skb, OVPN_A_PEER_TX_ID, peer->tx_id))
+		goto err;
+
+	if (peer->entropy_tx) {
+		if (nla_put_u16(skb, OVPN_A_PEER_SPORT_ENTROPY_TX_MIN,
+				peer->entropy_min) ||
+		    nla_put_u16(skb, OVPN_A_PEER_SPORT_ENTROPY_TX_MAX,
+				peer->entropy_max))
+			goto err;
+	}
+
+	if (peer->entropy_rx &&
+	    nla_put_flag(skb, OVPN_A_PEER_SPORT_ENTROPY_RX))
 		goto err;
 
 	if (peer->vpn_addrs.ipv4.s_addr != htonl(INADDR_ANY))
@@ -1066,6 +1147,11 @@ int ovpn_nl_key_new_doit(struct sk_buff *skb, struct genl_info *info)
 				       peer_id);
 		goto out;
 	}
+	/* A newly installed primary key can transmit a configured keepalive,
+	 * so send one immediately (a secondary key is not active for TX).
+	 */
+	if (pkr.slot == OVPN_KEY_SLOT_PRIMARY)
+		ovpn_peer_keepalive_send_now(peer);
 
 	netdev_dbg(ovpn->dev, "new key installed (id=%u) for peer %u\n",
 		   pkr.key.key_id, peer_id);
