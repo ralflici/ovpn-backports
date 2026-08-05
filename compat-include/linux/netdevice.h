@@ -4,6 +4,19 @@
 #include <linux/version.h>
 #include_next <linux/netdevice.h>
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 14, 0) && \
+	RHEL_RELEASE_CODE == 0
+
+#include <net/rtnetlink.h>
+
+/* Before the per-netdevice lock was introduced, RTNL serialized device
+ * registration state changes.
+ */
+#define netdev_lock(dev) rtnl_lock()
+#define netdev_unlock(dev) rtnl_unlock()
+
+#endif /* LINUX_VERSION_CODE < KERNEL_VERSION(6, 14, 0) && RHEL_RELEASE_CODE == 0 */
+
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 17, 0) && \
 	RHEL_RELEASE_CODE < RHEL_RELEASE_VERSION(9, 1)
 

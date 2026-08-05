@@ -11,37 +11,38 @@ index 493a5a0..8f16045 100644
  #include <net/transp_v6.h>
  #include <net/udp.h>
 @@ -196,9 +197,9 @@ static int ovpn_udp4_output(struct ovpn_peer *peer, struct ovpn_bind *bind,
- 	dst_cache_set_ip4(cache, &rt->dst, fl.saddr);
- 
- transmit:
+ 	 * that could otherwise misdeliver the packet.
+ 	 */
 -	udp_tunnel_xmit_skb(rt, sk, skb, fl.saddr, fl.daddr, 0,
--			    ip4_dst_hoplimit(&rt->dst), 0, fl.fl4_sport,
--			    fl.fl4_dport, false, sk->sk_no_check_tx, 0);
+-			    ip4_dst_hoplimit(&rt->dst), 0, src_port,
+-			    fl.fl4_dport, false,
+-			    !peer->entropy_tx && sk->sk_no_check_tx, 0);
 +	ovpn_udp_tunnel_xmit_skb(rt, sk, skb, fl.saddr, fl.daddr, 0,
-+				 ip4_dst_hoplimit(&rt->dst), 0, fl.fl4_sport,
-+				 fl.fl4_dport, false, sk->sk_no_check_tx);
++				 ip4_dst_hoplimit(&rt->dst), 0, src_port,
++				 fl.fl4_dport, false,
++				 !peer->entropy_tx && sk->sk_no_check_tx);
  	ret = 0;
  err:
  	local_bh_enable();
-@@ -250,7 +251,7 @@ static int ovpn_udp6_output(struct ovpn_peer *peer, struct ovpn_bind *bind,
+@@ -145,6 +146,6 @@ static struct dst_entry *ovpn_udp6_route(struct ovpn_peer *peer,
  		dst_cache_reset(cache);
  	}
  
--	dst = ip6_dst_lookup_flow(sock_net(sk), sk, &fl, NULL);
-+	dst = ovpn_ipv6_dst_lookup_flow(sock_net(sk), sk, &fl, NULL);
+-	dst = ip6_dst_lookup_flow(sock_net(sk), sk, fl, NULL);
++	dst = ovpn_ipv6_dst_lookup_flow(sock_net(sk), sk, fl, NULL);
  	if (IS_ERR(dst)) {
- 		ret = PTR_ERR(dst);
- 		net_dbg_ratelimited("%s: no route to host %pISpc: %d\n",
+ 		net_dbg_ratelimited("%s: no route to host %pISpc: %ld\n",
 @@ -271,9 +272,9 @@ static int ovpn_udp6_output(struct ovpn_peer *peer, struct ovpn_bind *bind,
- 	 * udp_tunnel_xmit_skb()
+ 	 * that could otherwise misdeliver the packet.
  	 */
- 	skb->ignore_df = 1;
 -	udp_tunnel6_xmit_skb(dst, sk, skb, skb->dev, &fl.saddr, &fl.daddr, 0,
--			     ip6_dst_hoplimit(dst), 0, fl.fl6_sport,
--			     fl.fl6_dport, udp_get_no_check6_tx(sk), 0);
+-			     ip6_dst_hoplimit(dst), 0, src_port,
+-			     fl.fl6_dport,
+-			     !peer->entropy_tx && udp_get_no_check6_tx(sk), 0);
 +	ovpn_udp_tunnel6_xmit_skb(dst, sk, skb, skb->dev, &fl.saddr, &fl.daddr,
-+				  0, ip6_dst_hoplimit(dst), 0, fl.fl6_sport,
-+				  fl.fl6_dport, udp_get_no_check6_tx(sk));
++				  0, ip6_dst_hoplimit(dst), 0, src_port,
++				  fl.fl6_dport,
++				  !peer->entropy_tx && udp_get_no_check6_tx(sk));
  	ret = 0;
  err:
  	local_bh_enable();

@@ -2,8 +2,8 @@
 
 set -e
 
-KERNEL_REPO_URL='https://github.com/OpenVPN/ovpn-net-next.git'
-KERNEL_COMMIT=${KERNEL_COMMIT:-'f2dfcc4b4bc28ba8ad45bce43ad76fa9575e27f5'}
+KERNEL_REPO_URL='https://github.com/mandelbitdev/ovpn-net-next.git'
+KERNEL_COMMIT=${KERNEL_COMMIT:-'9cfaea4c76d8d1ac841e7bce55e43ff202af9192'}
 KERNEL_DIR="$PWD/kernel"
 
 clean_ovpn_selftests() {

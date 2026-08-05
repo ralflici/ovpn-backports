@@ -67,7 +67,7 @@ index 65054cc..7291dbc 100644
  		if (skb_queue_len(&peer->tcp.out_queue) >=
 -		    READ_ONCE(net_hotdata.max_backlog)) {
 +		    ovpn_tcp_max_backlog()) {
- 			dev_dstats_tx_dropped(peer->ovpn->dev);
+ 			ovpn_dev_dstats_tx_dropped(peer->ovpn->dev);
  			kfree_skb(skb);
  			goto unlock;
 @@ -557,13 +576,21 @@ int ovpn_tcp_socket_attach(struct ovpn_socket *ovpn_sock,
