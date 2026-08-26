@@ -19,3 +19,4 @@ jobs:
     secrets:
       RHEL_ORG_ID: ${{ secrets.RHEL_ORG_ID }}
       RHEL_ACTIVATION_KEY: ${{ secrets.RHEL_ACTIVATION_KEY }}
+      RHEL_10_BETA_X86_64_PRODUCT_CERT: ${{ secrets.RHEL_10_BETA_X86_64_PRODUCT_CERT }}
