@@ -2,8 +2,9 @@
 
 set -e
 
-KERNEL_REPO_URL='https://github.com/OpenVPN/ovpn-net-next.git'
-KERNEL_COMMIT=${KERNEL_COMMIT:-'f2dfcc4b4bc28ba8ad45bce43ad76fa9575e27f5'}
+BACKPORTS_CONFIG="$PWD/backports.conf"
+# shellcheck source=backports.conf
+source "$BACKPORTS_CONFIG"
 KERNEL_DIR="$PWD/kernel"
 ORIG_SOURCES_DIR=${ORIG_SOURCES_DIR:-kernel/drivers/net/ovpn}
 ORIG_TESTS_DIR=${ORIG_TESTS_DIR:-kernel/tools/testing/selftests/net/ovpn}
