@@ -51,14 +51,32 @@ import_ovpn_selftests() {
 		"$PWD/Documentation/netlink/genetlink.yaml"
 	cp "$KERNEL_DIR/scripts/subarch.include" "$PWD/scripts/subarch.include"
 
-	for patch in "$PWD"/compat-patches/tests/*.patch; do
+}
+
+apply_compat_patches() {
+	local import_tests=$1
+	local patch
+	local patches=()
+
+	# without nullglob, an unmatched pattern is passed through literally
+	for patch in "$PWD"/compat-patches/sources/*.patch; do
 		[ -e "$patch" ] || continue
-		git apply --verbose "$patch"
+		patches+=("$patch")
 	done
-	for patch in "$PWD"/compat-patches/ynl/*.patch; do
-		[ -e "$patch" ] || continue
-		git apply --verbose "$patch"
-	done
+
+	if [ "$import_tests" -eq "1" ]; then
+		for patch in "$PWD"/compat-patches/tests/*.patch \
+			"$PWD"/compat-patches/ynl/*.patch; do
+			[ -e "$patch" ] || continue
+			patches+=("$patch")
+		done
+	fi
+
+	if [ "${#patches[@]}" -gt "0" ]; then
+		# a single invocation validates the entire series before
+		# modifying the files
+		git apply --verbose "${patches[@]}"
+	fi
 }
 
 get_ovpn() {
@@ -80,13 +98,11 @@ get_ovpn() {
 	cp -r "$KERNEL_DIR/drivers/net/ovpn" "$PWD/drivers/net/"
 	cp "$KERNEL_DIR/include/uapi/linux/ovpn.h" "$PWD/include/uapi/linux/ovpn.h"
 
-	for patch in "$PWD"/compat-patches/sources/*.patch; do
-		git apply --verbose "$patch"
-	done
-
 	if [ "$import_tests" -eq "1" ]; then
 		import_ovpn_selftests
 	fi
+
+	apply_compat_patches "$import_tests"
 
 	# We extract the branch from backports because all the non-sources branches
 	# of this repo point directly to the corresponding branch in ovpn-net-next
