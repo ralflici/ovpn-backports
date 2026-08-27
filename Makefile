@@ -37,7 +37,7 @@ ccflags-y += -Werror
 # we expose its first component as a number for generic version comparisons
 # rather than adding a Makefile header probe for each backported feature.
 OVPN_RHEL_RELEASE_BUILD := $(shell \
-	sed -n 's/^#define RHEL_RELEASE "\([0-9][0-9]*\).*/\1/p' \
+	sed -n 's/^\#define RHEL_RELEASE "\([0-9][0-9]*\).*/\1/p' \
 		$(KERNEL_SRC)/include/generated/uapi/linux/version.h)
 ifneq ($(OVPN_RHEL_RELEASE_BUILD),)
 ccflags-y += -DOVPN_RHEL_RELEASE_BUILD=$(OVPN_RHEL_RELEASE_BUILD)
