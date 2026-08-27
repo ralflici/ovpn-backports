@@ -5,6 +5,12 @@ set -e
 KERNEL_REPO_URL='https://github.com/OpenVPN/ovpn-net-next.git'
 KERNEL_COMMIT=${KERNEL_COMMIT:-'f2dfcc4b4bc28ba8ad45bce43ad76fa9575e27f5'}
 KERNEL_DIR="$PWD/kernel"
+ORIG_SOURCES_DIR=${ORIG_SOURCES_DIR:-kernel/drivers/net/ovpn}
+ORIG_TESTS_DIR=${ORIG_TESTS_DIR:-kernel/tools/testing/selftests/net/ovpn}
+ORIG_YNL_DIR=${ORIG_YNL_DIR:-kernel/tools/net/ynl/pyynl}
+MOD_SOURCES_DIR=drivers/net/ovpn
+MOD_TESTS_DIR=tools/testing/selftests/net/ovpn
+MOD_YNL_DIR=tools/net/ynl/pyynl
 
 clean_ovpn_selftests() {
 	rm -fr \
@@ -79,6 +85,147 @@ apply_compat_patches() {
 	fi
 }
 
+is_kernel_build_artifact() {
+	case "$1" in
+	*.ko | *.mod | *.mod.c | *.o | Module.symvers | modules.order)
+		return 0
+		;;
+	esac
+
+	return 1
+}
+
+write_diff() {
+	local old_file=$1
+	local new_file=$2
+	local output=$3
+	local status=0
+
+	# exit status 1 means a diff was produced; only propagate actual errors
+	git diff --no-index "$old_file" "$new_file" > "$output" || status=$?
+	if [ "$status" -ne "1" ]; then
+		return "$status"
+	fi
+}
+
+generate_patch_set() (
+	local orig_dir=$1
+	local mod_dir=$2
+	local output_dir=$3
+	local escaped_orig_dir=${orig_dir#/}
+	local escaped_mod_dir=${mod_dir#/}
+	local base filepath output patch_name relative_path
+
+	escaped_orig_dir=${escaped_orig_dir//\//\\/}
+	escaped_mod_dir=${escaped_mod_dir//\//\\/}
+	mkdir -p "$output_dir"
+
+	# recurse into trees such as pyynl/lib, and make an empty tree expand
+	# to nothing instead of a literal **/* path. The subshell scopes both
+	# options.
+	shopt -s globstar nullglob
+
+	for filepath in "$orig_dir"/**/*; do
+		[ -f "$filepath" ] || continue
+		relative_path=${filepath#"$orig_dir"/}
+		# patch dirs are flat, so encode subdirs in the name
+		patch_name=${relative_path//\//-}.patch
+		output="$output_dir/$patch_name"
+
+		if [ -f "$mod_dir/$relative_path" ]; then
+			write_diff "$filepath" "$mod_dir/$relative_path" "$output"
+			if [ ! -s "$output" ]; then
+				rm -f "$output"
+				continue
+			fi
+			sed -i "s/$escaped_orig_dir/$escaped_mod_dir/" "$output"
+		fi
+	done
+
+	for filepath in "$mod_dir"/**/*; do
+		[ -f "$filepath" ] || continue
+		relative_path=${filepath#"$mod_dir"/}
+		base=$(basename "$filepath")
+		# catch Kbuild output files
+		if [ -e "$orig_dir/$relative_path" ] || is_kernel_build_artifact "$base"; then
+			continue
+		fi
+		# catch bin files (such as .pyc) reported as "- -" by numstat
+		if git diff --no-index --numstat /dev/null "$filepath" | \
+			grep -q '^-[[:space:]]\+-[[:space:]]'; then
+			continue
+		fi
+
+		patch_name=${relative_path//\//-}.patch
+		write_diff /dev/null "$filepath" "$output_dir/$patch_name"
+	done
+)
+
+replace_patch_set() {
+	local generated_dir=$1
+	local patch_dir=$2
+	local patch
+
+	mkdir -p "$patch_dir"
+	rm -f "$patch_dir"/*.patch
+	# without nullglob, an unmatched pattern is passed through literally
+	for patch in "$generated_dir"/*.patch; do
+		[ -e "$patch" ] || continue
+		cp "$patch" "$patch_dir/"
+	done
+}
+
+check_resolved_sources() {
+	local path
+	local unresolved=0
+
+	for path in "$MOD_SOURCES_DIR" "$MOD_TESTS_DIR" "$MOD_YNL_DIR"; do
+		[ -d "$path" ] || continue
+		if find "$path" -type f -name '*.rej' -print | grep -q .; then
+			echo "Unresolved reject files found under $path" >&2
+			unresolved=1
+		fi
+		if grep -RIlE '^(<<<<<<< |=======|>>>>>>> )' "$path" | grep -q .; then
+			echo "Unresolved conflict markers found under $path" >&2
+			unresolved=1
+		fi
+	done
+
+	[ "$unresolved" -eq "0" ]
+}
+
+refresh_patches() (
+	local tmp_dir
+
+	if [ ! -d "$ORIG_SOURCES_DIR" ] || [ ! -d "$MOD_SOURCES_DIR" ]; then
+		echo "Original and modified ovpn sources are required" >&2
+		return 1
+	fi
+	check_resolved_sources
+
+	tmp_dir=$(mktemp -d "$PWD/.compat-patches.XXXXXX")
+	trap 'rm -rf "$tmp_dir"' EXIT
+
+	generate_patch_set "$ORIG_SOURCES_DIR" "$MOD_SOURCES_DIR" \
+		"$tmp_dir/sources"
+	if [ -d "$MOD_TESTS_DIR" ]; then
+		generate_patch_set "$ORIG_TESTS_DIR" "$MOD_TESTS_DIR" \
+			"$tmp_dir/tests"
+	fi
+	if [ -d "$MOD_YNL_DIR" ]; then
+		generate_patch_set "$ORIG_YNL_DIR" "$MOD_YNL_DIR" \
+			"$tmp_dir/ynl"
+	fi
+
+	replace_patch_set "$tmp_dir/sources" compat-patches/sources
+	if [ -d "$MOD_TESTS_DIR" ]; then
+		replace_patch_set "$tmp_dir/tests" compat-patches/tests
+	fi
+	if [ -d "$MOD_YNL_DIR" ]; then
+		replace_patch_set "$tmp_dir/ynl" compat-patches/ynl
+	fi
+)
+
 get_ovpn() {
 	keep=$1
 	import_tests=$2
@@ -141,7 +288,7 @@ EOF
 }
 
 print_usage() {
-	echo "Usage: ./backports-ctl.sh <get-ovpn|clean>"
+	echo "Usage: ./backports-ctl.sh <get-ovpn|refresh-patches|clean>"
 	echo "       ./backports-ctl.sh get-ovpn [-k|--keep] [-t|--tests]"
 	exit 1
 }
@@ -173,6 +320,8 @@ elif [ "$command" = "get-ovpn" ]; then
 		shift
 	done
 	get_ovpn "$keep" "$import_tests"
+elif [ "$command" = "refresh-patches" ]; then
+	refresh_patches
 elif [ "$command" = "clean" ]; then
 	read -r -p "Are you sure you want to restore the repository to its default state? [y/N]" clean && [[ "$clean" = "y" || "$clean" = "Y" ]] && git clean -fdx && git reset --hard
 else
