@@ -30,14 +30,17 @@ endif
 DEBUG ?= 0
 ccflags-y += -Werror
 
-# Vendor kernels may backport the new rtnl_link_ops::newlink signature without
-# changing LINUX_VERSION_CODE in a useful way. The only way to detect the
-# actual callback shape is by parsing the kernel header.
-HAS_RTNL_NEWLINK_PARAMS := $(shell \
-	grep -A5 '\*newlink' $(KERNEL_SRC)/include/net/rtnetlink.h | \
-	grep -q 'struct rtnl_newlink_params' && echo y)
-ifeq ($(HAS_RTNL_NEWLINK_PARAMS),y)
-ccflags-y += -DOVPN_HAS_RTNL_NEWLINK_PARAMS
+# RHEL_RELEASE_CODE only identifies the RHEL major and minor release. During
+# development, incompatible backports may instead be identified by the
+# monotonically increasing build number in the quoted RHEL_RELEASE string.
+# Released kernels may append z-stream components (for example, "55.9.1"), so
+# we expose its first component as a number for generic version comparisons
+# rather than adding a Makefile header probe for each backported feature.
+OVPN_RHEL_RELEASE_BUILD := $(shell \
+	sed -n 's/^#define RHEL_RELEASE "\([0-9][0-9]*\).*/\1/p' \
+		$(KERNEL_SRC)/include/generated/uapi/linux/version.h)
+ifneq ($(OVPN_RHEL_RELEASE_BUILD),)
+ccflags-y += -DOVPN_RHEL_RELEASE_BUILD=$(OVPN_RHEL_RELEASE_BUILD)
 endif
 
 ifeq ($(DEBUG),1)
