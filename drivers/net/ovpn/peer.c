@@ -37,6 +37,17 @@ static void unlock_ovpn(struct ovpn_priv *ovpn,
 	}
 }
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 10, 0)
+static void ovpn_keepalive_work_schedule(struct ovpn_priv *ovpn,
+					 unsigned long delay)
+{
+	spin_lock_bh(&ovpn->keepalive_work_lock);
+	if (!ovpn->keepalive_work_disabled)
+		mod_delayed_work(system_percpu_wq, &ovpn->keepalive_work, delay);
+	spin_unlock_bh(&ovpn->keepalive_work_lock);
+}
+#endif
+
 /**
  * ovpn_peer_keepalive_set - configure keepalive values for peer
  * @peer: the peer to configure
@@ -62,7 +73,11 @@ void ovpn_peer_keepalive_set(struct ovpn_peer *peer, u32 interval, u32 timeout)
 	/* now that interval and timeout have been changed, kick
 	 * off the worker so that the next delay can be recomputed
 	 */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 10, 0)
+	ovpn_keepalive_work_schedule(peer->ovpn, 0);
+#else
 	mod_delayed_work(system_percpu_wq, &peer->ovpn->keepalive_work, 0);
+#endif
 }
 
 /**
@@ -1463,8 +1478,12 @@ void ovpn_peer_keepalive_work(struct work_struct *work)
 		netdev_dbg(ovpn->dev,
 			   "scheduling keepalive work: now=%llu next_run=%llu delta=%llu\n",
 			   next_run, now, next_run - now);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 10, 0)
+		ovpn_keepalive_work_schedule(ovpn, (next_run - now) * HZ);
+#else
 		schedule_delayed_work(&ovpn->keepalive_work,
 				      (next_run - now) * HZ);
+#endif
 	}
 	unlock_ovpn(ovpn, &release_list);
 }

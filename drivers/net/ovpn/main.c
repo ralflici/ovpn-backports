@@ -84,7 +84,15 @@ static void ovpn_net_uninit(struct net_device *dev)
 {
 	struct ovpn_priv *ovpn = netdev_priv(dev);
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 10, 0)
+	/* cancel does not prevent a racing queue attempt after it returns */
+	spin_lock_bh(&ovpn->keepalive_work_lock);
+	ovpn->keepalive_work_disabled = true;
+	spin_unlock_bh(&ovpn->keepalive_work_lock);
+	cancel_delayed_work_sync(&ovpn->keepalive_work);
+#else
 	disable_delayed_work_sync(&ovpn->keepalive_work);
+#endif
 	ovpn_peers_free(ovpn, NULL, OVPN_DEL_PEER_REASON_TEARDOWN);
 	gro_cells_destroy(&ovpn->gro_cells);
 #if LINUX_VERSION_CODE < KERNEL_VERSION(6, 9, 0)
@@ -224,6 +232,10 @@ static int ovpn_newlink_common(struct net_device *dev, struct nlattr **data)
 	ovpn->mode = mode;
 	spin_lock_init(&ovpn->lock);
 	INIT_DELAYED_WORK(&ovpn->keepalive_work, ovpn_peer_keepalive_work);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 10, 0)
+	spin_lock_init(&ovpn->keepalive_work_lock);
+	ovpn->keepalive_work_disabled = false;
+#endif
 
 	/* Set carrier explicitly after registration, this way state is
 	 * clearly defined.
