@@ -1,8 +1,8 @@
 diff --git a/tools/net/ynl/pyynl/cli.py b/tools/net/ynl/pyynl/cli.py
-index 602ff68c23e0..fc9a56170091 100755
+index b6a6ce1..019be65 100755
 --- a/tools/net/ynl/pyynl/cli.py
 +++ b/tools/net/ynl/pyynl/cli.py
-@@ -261,7 +261,10 @@ def main():
+@@ -235,7 +235,10 @@ def main():
      dbg_group.add_argument('--dbg-small-recv', default=0, const=4000,
                             action='store', nargs='?', type=int, metavar='INT',
                             help="Length of buffers used for recv()")
@@ -14,13 +14,3 @@ index 602ff68c23e0..fc9a56170091 100755
  
      args = parser.parse_args()
  
-@@ -274,7 +277,7 @@ def main():
- 
-     if args.list_families:
-         for filename in sorted(os.listdir(spec_dir())):
-             if filename.endswith('.yaml'):
--                print(filename.removesuffix('.yaml'))
-+                print(filename[:-5])
-         return
- 
-     if args.no_schema:

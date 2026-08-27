@@ -1,9 +1,8 @@
 diff --git a/tools/net/ynl/pyynl/lib/nlspec.py b/tools/net/ynl/pyynl/lib/nlspec.py
-index e92a103e3c57..d374fbb7a561 100644
+index b4ec598..9509e32 100644
 --- a/tools/net/ynl/pyynl/lib/nlspec.py
 +++ b/tools/net/ynl/pyynl/lib/nlspec.py
-@@ -227,7 +227,8 @@ class SpecAttrSet(SpecElement):
-         else:
+@@ -229,7 +229,8 @@ class SpecAttrSet(SpecElement):
              real_set = family.attr_sets[self.subset_of]
              for elem in self.yaml['attributes']:
                  real_attr = real_set[elem['name']]
