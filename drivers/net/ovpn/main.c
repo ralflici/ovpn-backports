@@ -223,7 +223,8 @@ static int ovpn_newlink_common(struct net_device *dev, struct nlattr **data)
 	return register_netdevice(dev);
 }
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 15, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 15, 0) || \
+	defined(OVPN_HAS_RTNL_NEWLINK_PARAMS)
 static int ovpn_newlink(struct net_device *dev,
 			struct rtnl_newlink_params *params,
 			struct netlink_ext_ack *extack)

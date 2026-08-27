@@ -29,6 +29,17 @@ endif
 
 DEBUG ?= 0
 ccflags-y += -Werror
+
+# Vendor kernels may backport the new rtnl_link_ops::newlink signature without
+# changing LINUX_VERSION_CODE in a useful way. The only way to detect the
+# actual callback shape is by parsing the kernel header.
+HAS_RTNL_NEWLINK_PARAMS := $(shell \
+	grep -A5 '\*newlink' $(KERNEL_SRC)/include/net/rtnetlink.h | \
+	grep -q 'struct rtnl_newlink_params' && echo y)
+ifeq ($(HAS_RTNL_NEWLINK_PARAMS),y)
+ccflags-y += -DOVPN_HAS_RTNL_NEWLINK_PARAMS
+endif
+
 ifeq ($(DEBUG),1)
     ccflags-y += -g -DDEBUG
 endif
