@@ -30,6 +30,18 @@ endif
 DEBUG ?= 0
 ccflags-y += -Werror
 
+# WQ_PERCPU is an enum member, so #ifndef cannot detect its availability.
+# Stable and distribution kernels also backport it to older baselines.
+# Inspect the source header during Kbuild to support split header packages.
+ifneq ($(srctree),)
+OVPN_HAVE_WQ_PERCPU := $(shell \
+	grep -qE '^[[:space:]]*WQ_PERCPU[[:space:]]*=' \
+		$(srctree)/include/linux/workqueue.h && echo 1)
+ifeq ($(OVPN_HAVE_WQ_PERCPU),)
+ccflags-y += -DOVPN_NO_WQ_PERCPU
+endif
+endif
+
 # RHEL_RELEASE_CODE only identifies the RHEL major and minor release. During
 # development, incompatible backports may instead be identified by the
 # monotonically increasing build number in the quoted RHEL_RELEASE string.
@@ -42,6 +54,28 @@ OVPN_RHEL_RELEASE_BUILD := $(shell \
 ifneq ($(OVPN_RHEL_RELEASE_BUILD),)
 ccflags-y += -DOVPN_RHEL_RELEASE_BUILD=$(OVPN_RHEL_RELEASE_BUILD)
 endif
+
+# Ubuntu backports can change APIs without changing the upstream version.
+# ABI numbers are specific to a kernel series and flavor, so expose both
+# values from the target headers rather than the running kernel.
+ifneq ("$(wildcard $(KERNEL_SRC)/include/generated/utsrelease.h)","")
+OVPN_UBUNTU_RELEASE_ABI := $(shell \
+	sed -n 's/^\#define UTS_UBUNTU_RELEASE_ABI \([0-9][0-9]*\)$$/\1/p' \
+		$(KERNEL_SRC)/include/generated/utsrelease.h)
+ifneq ($(OVPN_UBUNTU_RELEASE_ABI),)
+ccflags-y += -DOVPN_UBUNTU_RELEASE_ABI=$(OVPN_UBUNTU_RELEASE_ABI)
+OVPN_UBUNTU_FLAVOR := $(shell \
+	sed -n 's/^\#define UTS_RELEASE "[^"]*-[0-9][0-9]*-\([^"]*\)"$$/\1/p' \
+		$(KERNEL_SRC)/include/generated/utsrelease.h)
+ifeq ($(OVPN_UBUNTU_FLAVOR),generic)
+ccflags-y += -DOVPN_UBUNTU_FLAVOR=OVPN_UBUNTU_FLAVOR_GENERIC
+else ifeq ($(OVPN_UBUNTU_FLAVOR),aws)
+ccflags-y += -DOVPN_UBUNTU_FLAVOR=OVPN_UBUNTU_FLAVOR_AWS
+else ifeq ($(OVPN_UBUNTU_FLAVOR),azure)
+ccflags-y += -DOVPN_UBUNTU_FLAVOR=OVPN_UBUNTU_FLAVOR_AZURE
+endif # OVPN_UBUNTU_FLAVOR
+endif # OVPN_UBUNTU_RELEASE_ABI
+endif # generated/utsrelease.h exists
 
 ifeq ($(DEBUG),1)
     ccflags-y += -g -DDEBUG
